@@ -31,7 +31,7 @@ export function sanitizeHTML(
 			"span",
 			"div",
 		],
-		ALLOWED_ATTR: ["href", "target", "rel"],
+		ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
 		KEEP_CONTENT: true,
 		...config,
 	};

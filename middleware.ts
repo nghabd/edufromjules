@@ -21,12 +21,12 @@ function buildCspHeader(nonce: string): string {
 		"img-src 'self' data: blob: https:",
 		"media-src 'self' blob: https:",
 		"font-src 'self' data:",
-		"connect-src 'self' https:",
+		"connect-src 'self' https: " + (process.env.NEXT_PUBLIC_APP_URL || ""),
 		"object-src 'none'",
 		"base-uri 'self'",
 		"form-action 'self'",
 		"frame-ancestors 'self'",
-		!isDev ? "upgrade-insecure-requests" : "",
+		!isDev && !process.env.NEXT_PUBLIC_APP_URL?.startsWith("http://") ? "upgrade-insecure-requests" : "",
 	]
 		.filter(Boolean)
 		.join("; ")

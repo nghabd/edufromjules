@@ -35,12 +35,27 @@ export function getCORSHeaders(origin: string | null): Record<string, string> {
 	const isAllowed = allowedOrigins.some((allowed) => {
 		// Exact match or wildcard (for development)
 		if (allowed === "*") return true;
-		if (allowed === origin) return true;
+		if (!origin) return false;
+
+		const normalizedAllowed = allowed.endsWith("/") ? allowed.slice(0, -1) : allowed;
+		const normalizedOrigin = origin.endsWith("/") ? origin.slice(0, -1) : origin;
+
+		if (normalizedAllowed === normalizedOrigin) return true;
+
+		// Protocol-agnostic match for trusted origins
+		if (normalizedAllowed.replace(/^https?:\/\//, "") === normalizedOrigin.replace(/^https?:\/\//, "")) {
+			return true;
+		}
 
 		// Handle wildcards like *.example.com
 		if (allowed.startsWith("*.")) {
 			const pattern = allowed.substring(2);
-			return origin.endsWith(pattern);
+			try {
+				const originHost = new URL(origin).hostname;
+				return originHost.endsWith(pattern);
+			} catch {
+				return false;
+			}
 		}
 
 		return false;

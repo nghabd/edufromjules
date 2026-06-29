@@ -16,7 +16,8 @@ export async function GET() {
 				role: true,
 				canApproveOnsiteTraining: true,
 				supervisorId: true,
-				supervisor: { select: { name: true, email: true } }, // Fetch supervisor details
+				supervisor: { select: { name: true, email: true } },
+				createdAt: true,
 			},
 			orderBy: { createdAt: "desc" },
 		});

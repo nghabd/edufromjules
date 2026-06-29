@@ -43,6 +43,10 @@ const nextConfig: NextConfig = {
 							protocol: "https" as const,
 							hostname: appHostname,
 						},
+						{
+							protocol: "http" as const,
+							hostname: appHostname,
+						},
 					]
 				: []),
 		],
