@@ -1,0 +1,163 @@
+import { NextAuthOptions } from "next-auth";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/prisma";
+import { getAvatarUrl } from "@/lib/avatar";
+import { validateEmail } from "@/lib/validation";
+
+type AuthUser = {
+	id: string;
+	email: string;
+	name: string;
+	role: string;
+	image?: string | null;
+};
+
+export const authOptions: NextAuthOptions = {
+	adapter: PrismaAdapter(prisma),
+	providers: [
+		GoogleProvider({
+			clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+			clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+			// SECURITY: Disable dangerous email account linking
+			allowDangerousEmailAccountLinking: false,
+			// Only allow specific domains if needed
+			authorization: {
+				params: {
+					access_type: "offline",
+					prompt: "consent",
+				},
+			},
+		}),
+		CredentialsProvider({
+			name: "credentials",
+			credentials: {
+				email: { label: "Email", type: "email" },
+				password: { label: "Password", type: "password" },
+			},
+			async authorize(credentials) {
+				// Validate inputs
+				if (!credentials?.email || !credentials?.password) {
+					throw new Error("Missing email or password");
+				}
+
+				try {
+					// Validate email format
+					const email = validateEmail(credentials.email);
+
+					// Find user with specific role check
+					const user = await prisma.user.findUnique({
+						where: { email },
+						select: {
+							id: true,
+							email: true,
+							password: true,
+							name: true,
+							role: true,
+							image: true,
+							emailVerified: true,
+						},
+					});
+
+					// User not found or no password set
+					if (!user || !user.password) {
+						throw new Error("Invalid credentials");
+					}
+
+					// Verify password
+					const isValid = await bcrypt.compare(
+						credentials.password,
+						user.password,
+					);
+					if (!isValid) {
+						throw new Error("Invalid credentials");
+					}
+
+					// Check if email is verified (optional: implement email verification)
+					// if (!user.emailVerified) {
+					//   throw new Error("Please verify your email");
+					// }
+
+					return {
+						id: user.id,
+						email: user.email,
+						name: user.name ?? user.email,
+						role: user.role,
+						image: user.image,
+					} satisfies AuthUser;
+				} catch (error) {
+					console.error(
+						"[AUTH_ERROR]",
+						error instanceof Error ? error.message : "Unknown error",
+					);
+					return null;
+				}
+			},
+		}),
+	],
+	session: {
+		strategy: "jwt",
+		maxAge: 7 * 24 * 60 * 60, // 7 days
+		updateAge: 24 * 60 * 60, // Update every 24 hours
+	},
+	callbacks: {
+		async signIn({ user, account }) {
+			// Only allow Google OAuth from specific domains (optional)
+			if (account?.provider === "google") {
+				// You can add domain restrictions here if needed
+				void user;
+				// Optional: whitelist specific domains
+				// const allowedDomains = ["pharmacompany.com"];
+				// if (!allowedDomains.includes(domain ?? "")) return false;
+			}
+
+			return true;
+		},
+		async jwt({ token, user, trigger, session }) {
+			if (user) {
+				token.role = user.role || "PHARMACIST";
+				token.id = user.id;
+				token.email = user.email;
+				token.name = user.name;
+				token.image = getAvatarUrl(user.id, user.image);
+			}
+
+			if (trigger === "update" && session?.user) {
+				token.name = session.user.name ?? token.name;
+				token.image = session.user.image ?? token.image ?? null;
+			}
+			return token;
+		},
+		async session({ session, token }) {
+			if (session.user) {
+				session.user.role = token.role as string;
+				session.user.id = token.id as string;
+				session.user.email = token.email as string;
+				session.user.name = token.name as string;
+				session.user.image = (token.image as string | null) ?? null;
+			}
+			return session;
+		},
+	},
+	pages: {
+		signIn: "/login",
+		error: "/login",
+	},
+	// SECURITY: Ensure secret is set
+	secret: process.env.NEXTAUTH_SECRET,
+	// JWT settings
+	jwt: {
+		maxAge: 7 * 24 * 60 * 60, // 7 days
+	},
+	// Event logging for security auditing
+	events: {
+		async signIn({ user }) {
+			console.log(`[AUTH] User signed in: ${user?.id ?? "unknown"}`);
+		},
+		async signOut() {
+			console.log(`[AUTH] User signed out`);
+		},
+	},
+};
