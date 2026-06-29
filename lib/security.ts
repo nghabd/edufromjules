@@ -17,8 +17,6 @@ export const SECURITY_HEADERS: Record<string, string> = {
 	"X-XSS-Protection": "1; mode=block",
 	"Referrer-Policy": "strict-origin-when-cross-origin",
 	"Permissions-Policy": "geolocation=(self), microphone=(), camera=()",
-	"Content-Security-Policy":
-		"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'",
 };
 
 /**
@@ -43,7 +41,9 @@ export function getCORSHeaders(origin: string | null): Record<string, string> {
 		if (normalizedAllowed === normalizedOrigin) return true;
 
 		// Protocol-agnostic match for trusted origins
-		if (normalizedAllowed.replace(/^https?:\/\//, "") === normalizedOrigin.replace(/^https?:\/\//, "")) {
+		const allowedBase = normalizedAllowed.replace(/^https?:\/\//, "");
+		const originBase = normalizedOrigin.replace(/^https?:\/\//, "");
+		if (allowedBase === originBase) {
 			return true;
 		}
 

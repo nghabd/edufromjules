@@ -34,7 +34,12 @@ function buildCspHeader(nonce: string): string {
 		.trim();
 }
 
-function applyCsp(response: NextResponse, nonce: string): NextResponse {
+function applyCsp(response: NextResponse, nonce: string, path: string): NextResponse {
+	// Skip CSP for API routes and static assets to prevent header bloat and 494 errors
+	if (path.startsWith("/api/") || path.startsWith("/_next/") || path.includes(".")) {
+		return response;
+	}
+
 	response.headers.set("Content-Security-Policy", buildCspHeader(nonce));
 	response.headers.set("X-Nonce", nonce);
 	return response;
@@ -65,7 +70,7 @@ const authMiddleware = withAuth(
 		const response = NextResponse.next({
 			request: { headers: req.headers },
 		});
-		return applyCsp(response, nonce);
+		return applyCsp(response, nonce, path);
 	},
 	{
 		callbacks: {
@@ -74,7 +79,7 @@ const authMiddleware = withAuth(
 	},
 );
 
-export default async function proxy(
+export default async function middleware(
 	request: NextRequest,
 	event: NextFetchEvent,
 ) {
@@ -98,7 +103,7 @@ export default async function proxy(
 	const response = NextResponse.next({
 		request: { headers: requestHeaders },
 	});
-	return applyCsp(response, nonce);
+	return applyCsp(response, nonce, path);
 }
 
 export const config = {
