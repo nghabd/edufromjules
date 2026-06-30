@@ -41,7 +41,6 @@ function applyCsp(response: NextResponse, nonce: string, path: string): NextResp
 	}
 
 	response.headers.set("Content-Security-Policy", buildCspHeader(nonce));
-	response.headers.set("X-Nonce", nonce);
 	return response;
 }
 

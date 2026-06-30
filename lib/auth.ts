@@ -121,12 +121,12 @@ export const authOptions: NextAuthOptions = {
 				token.id = user.id;
 				token.email = user.email;
 				token.name = user.name;
-				token.image = getAvatarUrl(user.id, user.image);
+				// SECURITY: Don't store large image strings (base64) in the token to prevent 494 errors
+				// The image is already proxied via /api/users/${userId}/avatar
 			}
 
 			if (trigger === "update" && session?.user) {
 				token.name = session.user.name ?? token.name;
-				token.image = session.user.image ?? token.image ?? null;
 			}
 			return token;
 		},
@@ -136,7 +136,8 @@ export const authOptions: NextAuthOptions = {
 				session.user.id = token.id as string;
 				session.user.email = token.email as string;
 				session.user.name = token.name as string;
-				session.user.image = (token.image as string | null) ?? null;
+				// Dynamically build the avatar URL to keep the token small
+				session.user.image = `/api/users/${token.id}/avatar`;
 			}
 			return session;
 		},

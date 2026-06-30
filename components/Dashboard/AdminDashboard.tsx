@@ -61,9 +61,10 @@ export function AdminDashboard() {
 		queryKeys: adminRealtimeQueryKeys,
 	});
 
-	const { data } = useQuery<AdminOverview>({
+	const { data, isLoading, isError, error: queryError } = useQuery<AdminOverview>({
 		queryKey: ["admin-overview"],
 		queryFn: async () => (await axios.get("/api/admin/overview")).data,
+		retry: 1,
 	});
 	const deleteUser = useMutation({
 		mutationFn: async (id: string) =>
@@ -104,6 +105,35 @@ export function AdminDashboard() {
 		() => data?.users?.filter((u) => u.role === "SUPERVISOR") || [],
 		[data],
 	);
+
+	if (isLoading) {
+		return (
+			<div className="min-h-screen bg-background p-8">
+				<div className="mx-auto max-w-7xl animate-pulse">
+					<div className="h-10 w-64 bg-slate-200 dark:bg-slate-800 rounded mb-8" />
+					<div className="h-12 w-48 bg-slate-100 dark:bg-slate-800 rounded-xl mb-8" />
+					<div className="grid gap-6 lg:grid-cols-2">
+						<div className="h-96 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-border" />
+						<div className="h-96 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-border" />
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	if (isError) {
+		return (
+			<div className="min-h-screen bg-background p-8 flex items-center justify-center">
+				<div className="text-center">
+					<h2 className="text-2xl font-bold text-red-600 mb-2">Failed to load dashboard</h2>
+					<p className="text-muted-foreground mb-4">
+						{queryError instanceof Error ? queryError.message : "An unexpected error occurred"}
+					</p>
+					<Button onClick={() => window.location.reload()}>Retry</Button>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="min-h-screen bg-background p-8">
