@@ -13,34 +13,32 @@ function isProtectedRoute(path: string) {
 
 function buildCspHeader(nonce: string): string {
 	const isDev = process.env.NODE_ENV === "development";
+	const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
 
-	return [
+	const policy = [
 		"default-src 'self'",
-		`script-src 'self' 'nonce-${nonce}' ${isDev ? "'unsafe-eval'" : ""}`.trim(),
+		`script-src 'self' 'unsafe-inline' 'nonce-${nonce}' ${isDev ? "'unsafe-eval'" : ""}`,
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: blob: https:",
 		"media-src 'self' blob: https:",
 		"font-src 'self' data:",
-		"connect-src 'self' https: " + (process.env.NEXT_PUBLIC_APP_URL || ""),
-		"object-src 'none'",
-		"base-uri 'self'",
-		"form-action 'self'",
+		`connect-src 'self' https: ${appUrl}`,
 		"frame-ancestors 'self'",
-		!isDev && !process.env.NEXT_PUBLIC_APP_URL?.startsWith("http://") ? "upgrade-insecure-requests" : "",
-	]
-		.filter(Boolean)
-		.join("; ")
-		.replace(/\s{2,}/g, " ")
-		.trim();
+		!isDev && !appUrl.startsWith("http://") ? "upgrade-insecure-requests" : "",
+	];
+
+	return policy.filter(Boolean).join("; ").replace(/\s+/g, " ").trim();
 }
 
 function applyCsp(response: NextResponse, nonce: string, path: string): NextResponse {
-	// Skip CSP for API routes and static assets to prevent header bloat and 494 errors
-	if (path.startsWith("/api/") || path.startsWith("/_next/") || path.includes(".")) {
-		return response;
+	// Only apply CSP to document requests (HTML pages) to stay under header limits
+	const isDoc = !path.startsWith("/api/") && !path.startsWith("/_next/") && !path.includes(".");
+
+	if (isDoc) {
+		response.headers.set("Content-Security-Policy", buildCspHeader(nonce));
+		response.headers.set("x-nonce", nonce);
 	}
 
-	response.headers.set("Content-Security-Policy", buildCspHeader(nonce));
 	return response;
 }
 

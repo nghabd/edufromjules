@@ -11,12 +11,7 @@ import { logger } from "./logger";
  * Security headers configuration
  */
 export const SECURITY_HEADERS: Record<string, string> = {
-	"Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-	"X-Content-Type-Options": "nosniff",
-	"X-Frame-Options": "DENY",
-	"X-XSS-Protection": "1; mode=block",
-	"Referrer-Policy": "strict-origin-when-cross-origin",
-	"Permissions-Policy": "geolocation=(self), microphone=(), camera=()",
+	// Redundant headers removed as they are already set in next.config.ts
 };
 
 /**

@@ -90,20 +90,20 @@ export function AdminDashboard() {
 					u.name?.toLowerCase().includes(searchUsers.toLowerCase()) ||
 					u.email.toLowerCase().includes(searchUsers.toLowerCase()),
 			) || [],
-		[data, searchUsers],
+		[data?.users, searchUsers],
 	);
 	const filteredCourses = useMemo(
 		() =>
 			data?.courses?.filter((c) =>
 				c.title.toLowerCase().includes(searchCourses.toLowerCase()),
 			) || [],
-		[data, searchCourses],
+		[data?.courses, searchCourses],
 	);
 
 	// Extract supervisors from the user list to pass to the modal
 	const supervisorsList = useMemo(
 		() => data?.users?.filter((u) => u.role === "SUPERVISOR") || [],
-		[data],
+		[data?.users],
 	);
 
 	if (isLoading) {

@@ -121,13 +121,21 @@ export const authOptions: NextAuthOptions = {
 				token.id = user.id;
 				token.email = user.email;
 				token.name = user.name;
-				// SECURITY: Don't store large image strings (base64) in the token to prevent 494 errors
-				// The image is already proxied via /api/users/${userId}/avatar
 			}
 
 			if (trigger === "update" && session?.user) {
 				token.name = session.user.name ?? token.name;
 			}
+
+			// AGGRESSIVE 494 FIX: Strictly whitelist allowed fields in the token to prevent header bloat.
+			// NextAuth sometimes adds 'image' or 'picture' automatically from providers.
+			const allowedFields = ["id", "email", "name", "role", "iat", "exp", "jti"];
+			Object.keys(token).forEach((key) => {
+				if (!allowedFields.includes(key)) {
+					delete token[key];
+				}
+			});
+
 			return token;
 		},
 		async session({ session, token }) {
