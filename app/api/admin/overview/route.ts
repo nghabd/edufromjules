@@ -5,8 +5,14 @@ import { courseResponseInclude } from "@/lib/course-payload";
 
 export async function GET() {
 	try {
-		const { error } = await requireAdmin();
-		if (error) return error;
+		console.log("[ADMIN_OVERVIEW] Fetching overview data...");
+		const { error, session } = await requireAdmin();
+		if (error) {
+			console.warn("[ADMIN_OVERVIEW] Unauthorized access attempt", { error });
+			return error;
+		}
+
+		console.log("[ADMIN_OVERVIEW] Fetching from DB...", { userId: session.user.id });
 
 		const users = await prisma.user.findMany({
 			select: {
@@ -23,12 +29,20 @@ export async function GET() {
 		});
 
 		const courses = await prisma.course.findMany({
-			include: courseResponseInclude,
+			select: {
+				id: true,
+				title: true,
+				category: true,
+				createdAt: true,
+				_count: { select: { assignments: true } },
+			},
 			orderBy: { createdAt: "desc" },
 		});
 
+		console.log("[ADMIN_OVERVIEW] Success", { userCount: users.length, courseCount: courses.length });
 		return NextResponse.json({ users, courses });
-	} catch {
+	} catch (err) {
+		console.error("[ADMIN_OVERVIEW] ERROR", err);
 		return serverError("Failed to fetch admin overview");
 	}
 }

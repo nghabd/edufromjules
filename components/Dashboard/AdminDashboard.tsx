@@ -167,7 +167,7 @@ export function AdminDashboard() {
 					<AdminAnalytics />
 				) : (
 					<div className="grid gap-6 lg:grid-cols-2">
-						<details className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+						<details open className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
 							<summary className="flex cursor-pointer list-none items-center justify-between gap-3 border-b border-border px-6 py-4 [&::-webkit-details-marker]:hidden">
 								<div>
 									<h2 className="flex gap-2 text-lg font-bold">
@@ -244,7 +244,7 @@ export function AdminDashboard() {
 							</div>
 						</details>
 
-						<details className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+						<details open className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
 							<summary className="flex cursor-pointer list-none items-center justify-between gap-3 border-b border-border px-6 py-4 [&::-webkit-details-marker]:hidden">
 								<div>
 									<h2 className="flex gap-2 text-lg font-bold">

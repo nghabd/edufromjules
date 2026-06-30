@@ -188,22 +188,10 @@ const nextConfig: NextConfig = {
 			{
 				source: "/(.*)",
 				headers: [
-					// Security headers
-					{
-						key: "Strict-Transport-Security",
-						value: "max-age=63072000; includeSubDomains; preload",
-					},
-					{
-						key: "X-Frame-Options",
-						value: "SAMEORIGIN",
-					},
+					// Security headers - reduced to absolute minimum to prevent 494 errors
 					{
 						key: "X-Content-Type-Options",
 						value: "nosniff",
-					},
-					{
-						key: "Referrer-Policy",
-						value: "strict-origin-when-cross-origin",
 					},
 				],
 			},

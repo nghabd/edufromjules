@@ -22,12 +22,13 @@ export default async function RootLayout({
 }: {
 	children: React.ReactNode;
 }) {
-	const nonce = await getNonce();
-
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
-				{nonce && <meta property="csp-nonce" content={nonce} />}
+				<meta
+					httpEquiv="Content-Security-Policy"
+					content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self';"
+				/>
 			</head>
 			<body className={inter.className}>
 				<Providers>
