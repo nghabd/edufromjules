@@ -56,7 +56,7 @@ export const authOptions: NextAuthOptions = {
 							password: true,
 							name: true,
 							role: true,
-							image: true,
+							// SECURITY: NEVER fetch 'image' here to avoid large base64 strings in auth flow
 							emailVerified: true,
 						},
 					});
@@ -75,17 +75,12 @@ export const authOptions: NextAuthOptions = {
 						throw new Error("Invalid credentials");
 					}
 
-					// Check if email is verified (optional: implement email verification)
-					// if (!user.emailVerified) {
-					//   throw new Error("Please verify your email");
-					// }
-
 					return {
 						id: user.id,
 						email: user.email,
 						name: user.name ?? user.email,
 						role: user.role,
-						image: user.image,
+						image: null, // Always null here, handled via avatar proxy
 					} satisfies AuthUser;
 				} catch (error) {
 					console.error(
@@ -100,7 +95,34 @@ export const authOptions: NextAuthOptions = {
 	session: {
 		strategy: "jwt",
 		maxAge: 7 * 24 * 60 * 60, // 7 days
-		updateAge: 24 * 60 * 60, // Update every 24 hours
+	},
+	cookies: {
+		sessionToken: {
+			name: `s`,
+			options: {
+				httpOnly: true,
+				sameSite: "lax",
+				path: "/",
+				secure: process.env.NODE_ENV === "production",
+			},
+		},
+		callbackUrl: {
+			name: `u`,
+			options: {
+				sameSite: "lax",
+				path: "/",
+				secure: process.env.NODE_ENV === "production",
+			},
+		},
+		csrfToken: {
+			name: `c`,
+			options: {
+				httpOnly: true,
+				sameSite: "lax",
+				path: "/",
+				secure: process.env.NODE_ENV === "production",
+			},
+		},
 	},
 	callbacks: {
 		async signIn({ user, account }) {
@@ -121,13 +143,21 @@ export const authOptions: NextAuthOptions = {
 				token.id = user.id;
 				token.email = user.email;
 				token.name = user.name;
-				token.image = getAvatarUrl(user.id, user.image);
 			}
 
 			if (trigger === "update" && session?.user) {
 				token.name = session.user.name ?? token.name;
-				token.image = session.user.image ?? token.image ?? null;
 			}
+
+			// AGGRESSIVE 494 FIX: Strictly whitelist allowed fields in the token to prevent header bloat.
+			// NextAuth sometimes adds 'image' or 'picture' automatically from providers.
+			const allowedFields = ["id", "email", "name", "role", "iat", "exp", "jti"];
+			Object.keys(token).forEach((key) => {
+				if (!allowedFields.includes(key)) {
+					delete token[key];
+				}
+			});
+
 			return token;
 		},
 		async session({ session, token }) {
@@ -136,7 +166,8 @@ export const authOptions: NextAuthOptions = {
 				session.user.id = token.id as string;
 				session.user.email = token.email as string;
 				session.user.name = token.name as string;
-				session.user.image = (token.image as string | null) ?? null;
+				// Dynamically build the avatar URL to keep the token small
+				session.user.image = `/api/users/${token.id}/avatar`;
 			}
 			return session;
 		},

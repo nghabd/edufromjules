@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import DOMPurify from "isomorphic-dompurify";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -294,8 +293,13 @@ export function MaterialViewer({
 		return `${materialUrl}#toolbar=0&navpanes=0&scrollbar=0&page=${page}`;
 	}, [material, materialUrl, page]);
 
-	const richTextHtml = useMemo(() => {
-		if (!material) return "";
+	const [richTextHtml, setRichTextHtml] = useState("");
+
+	useEffect(() => {
+		if (!material) {
+			setRichTextHtml("");
+			return;
+		}
 
 		if (
 			material.type === "RICH_TEXT" ||
@@ -308,14 +312,17 @@ export function MaterialViewer({
 					? decodeRichTextMaterialContent(materialUrl)
 					: "");
 
-			// Include ADD_ATTR so text colors (inline styles) aren't stripped out for security
-			return DOMPurify.sanitize(rawHtml, {
-				USE_PROFILES: { html: true },
-				ADD_ATTR: ["style", "class", "target"],
+			// Use dynamic import for DOMPurify to keep it out of the server bundle
+			import("isomorphic-dompurify").then((DOMPurify) => {
+				const sanitized = DOMPurify.default.sanitize(rawHtml, {
+					USE_PROFILES: { html: true },
+					ADD_ATTR: ["style", "class", "target"],
+				});
+				setRichTextHtml(sanitized);
 			});
+		} else {
+			setRichTextHtml("");
 		}
-
-		return "";
 	}, [material, materialUrl]);
 
 	const resetLessonPreview = () => {

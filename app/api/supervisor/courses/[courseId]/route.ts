@@ -8,8 +8,8 @@ import {
 	buildLessonQuizWriteData,
 	buildMaterialWriteData,
 	buildQuestionWriteData,
-	courseResponseInclude,
 } from "@/lib/course-payload";
+import { courseResponseInclude } from "@/lib/course-include";
 import { publishDashboardRefresh } from "@/lib/realtime-server";
 import { REALTIME_EVENTS } from "@/lib/realtime-events";
 

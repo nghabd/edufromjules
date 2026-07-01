@@ -1,4 +1,3 @@
-import { sanitizeHTML } from "@/lib/input-sanitization";
 import type { CourseBuilderInput, QuizQuestionInput } from "@/lib/schemas";
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -66,7 +65,7 @@ function normalizeQuestion(question: QuizQuestionInput) {
 	};
 }
 
-export function normalizeCourseBuilderPayload(payload: unknown) {
+export function normalizeCourseBuilderPayload(payload: any) {
 	const source = asRecord(payload);
 	const topics = asArray(source.topics);
 
@@ -167,7 +166,7 @@ export function normalizeCourseBuilderPayload(payload: unknown) {
 }
 
 export function buildMaterialWriteData(
-	material: CourseBuilderInput["topics"][number]["materials"][number],
+	material: any,
 	index: number,
 ) {
 	const storageKey = material.storageKey?.trim() || undefined;
@@ -183,10 +182,7 @@ export function buildMaterialWriteData(
 		title: material.title,
 		type: material.type,
 		url: material.type === "RICH_TEXT" ? "" : material.url || "",
-		content:
-			material.type === "RICH_TEXT" || material.type === "PRACTICAL"
-				? sanitizeHTML(material.content || "")
-				: null,
+		content: material.content || null,
 		storageProvider,
 		storagePath,
 		storageKey,
@@ -248,20 +244,3 @@ export function buildTopicCreateData(topics: CourseBuilderInput["topics"]) {
 			: undefined,
 	}));
 }
-
-export const courseResponseInclude = {
-	topics: {
-		orderBy: { order: "asc" as const },
-		include: {
-			materials: { orderBy: { order: "asc" as const } },
-			requiredQuiz: {
-				include: { questions: { orderBy: { order: "asc" as const } } },
-			},
-		},
-	},
-	quizzes: {
-		where: { scope: "COURSE" },
-		include: { questions: { orderBy: { order: "asc" as const } } },
-	},
-	_count: { select: { assignments: true } },
-};

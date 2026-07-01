@@ -32,8 +32,16 @@ export function enforceTrustedOrigin(request: Request): NextResponse | null {
 		return null;
 	}
 
-	const requestOrigin = trimTrailingSlash(new URL(request.url).origin);
+	// In Vercel, the internal request URL might be http even if the external is https
+	const url = new URL(request.url);
+	const forwardedProto = request.headers.get("x-forwarded-proto");
+	if (forwardedProto && forwardedProto !== url.protocol.replace(":", "")) {
+		url.protocol = forwardedProto + ":";
+	}
+	const requestOrigin = trimTrailingSlash(url.origin);
+
 	const configuredOrigins = getAllowedOrigins();
+	// Always allow the request's own origin to prevent self-blocking
 	const allowedOrigins = [...new Set([...configuredOrigins, requestOrigin])];
 
 	const origin = request.headers.get("origin");

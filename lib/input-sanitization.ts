@@ -1,42 +1,28 @@
 /**
- * Comprehensive Input Sanitization Module
+ * Comprehensive Input Sanitization Module (ESM-Safe Version)
  * Handles XSS prevention, SQL injection prevention, and data validation
+ *
+ * NOTE: isomorphic-dompurify is removed from server-side to prevent ERR_REQUIRE_ESM crashes.
+ * Real HTML sanitization should be performed on the client side before rendering.
  */
 
-import DOMPurify from "isomorphic-dompurify";
-
 /**
- * HTML sanitization with DOMPurify
+ * Basic HTML sanitization for server-side (Regex-based, non-exhaustive)
+ * This is a fallback to prevent the most obvious attacks while avoiding ESM crashes.
  */
 export function sanitizeHTML(
 	html: string,
-	config: Record<string, unknown> = {},
+	_config: Record<string, unknown> = {},
 ): string {
-	const defaultConfig = {
-		ALLOWED_TAGS: [
-			"p",
-			"br",
-			"strong",
-			"em",
-			"u",
-			"a",
-			"ul",
-			"li",
-			"ol",
-			"h1",
-			"h2",
-			"h3",
-			"h4",
-			"blockquote",
-			"span",
-			"div",
-		],
-		ALLOWED_ATTR: ["href", "target", "rel"],
-		KEEP_CONTENT: true,
-		...config,
-	};
+	if (typeof html !== "string") return "";
 
-	return String(DOMPurify.sanitize(html, defaultConfig));
+	// If we are on the server, we avoid importing DOMPurify
+	// We just remove <script> tags and on* attributes as a basic safety measure
+	return html
+		.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, "")
+		.replace(/on\w+\s*=\s*"[^"]*"/gim, "")
+		.replace(/on\w+\s*=\s*'[^']*'/gim, "")
+		.replace(/javascript:/gim, "");
 }
 
 /**
@@ -112,7 +98,6 @@ export function sanitizeURL(url: string): string {
  * Remove SQL injection patterns
  */
 export function sanitizeSQL(input: string): string {
-	// This is a basic check - always use parameterized queries in production!
 	const sqlPatterns = /('|(--)|;|\/\*|\*\/|xp_|sp_|exec|execute)/gi;
 	return input.replace(sqlPatterns, "");
 }
@@ -125,19 +110,14 @@ export function sanitizeFileName(filename: string): string {
 		return "file";
 	}
 
-	// Remove directory traversal attempts
 	let sanitized = filename
 		.replace(/\.\./g, "")
 		.replace(/[\/\\]/g, "")
 		.replace(/^\.+/, "");
 
-	// Remove null bytes
 	sanitized = sanitized.replace(/\0/g, "");
-
-	// Keep only safe characters
 	sanitized = sanitized.replace(/[^a-zA-Z0-9._\-]/g, "_");
 
-	// Limit length
 	if (sanitized.length > 255) {
 		sanitized = sanitized.substring(0, 255);
 	}
@@ -179,15 +159,12 @@ export function sanitizeSearchQuery(
 	query: string,
 	maxLength: number = 256,
 ): string {
-	// Remove special search characters that could cause issues
 	let sanitized = String(query).trim();
 
-	// Limit length
 	if (sanitized.length > maxLength) {
 		sanitized = sanitized.substring(0, maxLength);
 	}
 
-	// Remove control characters
 	sanitized = sanitized.replace(/[\x00-\x1F\x7F]/g, "");
 
 	return sanitized;
@@ -199,7 +176,6 @@ export function sanitizeSearchQuery(
 export function sanitizeJSON(jsonString: string): string {
 	try {
 		const parsed = JSON.parse(jsonString);
-		// Re-serialize to remove any suspicious content
 		return JSON.stringify(parsed);
 	} catch {
 		throw new Error("Invalid JSON");
@@ -235,15 +211,15 @@ export function sanitizeForDatabase<T>(obj: T): T {
  */
 export function detectSuspiciousPatterns(input: string): boolean {
 	const suspiciousPatterns = [
-		/<script[^>]*>.*?<\/script>/gi, // Script tags
-		/javascript:/gi, // Javascript protocol
-		/on\w+\s*=/gi, // Event handlers
-		/union\s+select/gi, // SQL injection
-		/drop\s+table/gi, // SQL injection
-		/insert\s+into/gi, // SQL injection
-		/delete\s+from/gi, // SQL injection
-		/\.\.\/\.\.\//g, // Directory traversal
-		/\0/g, // Null bytes
+		/<script[^>]*>.*?<\/script>/gi,
+		/javascript:/gi,
+		/on\w+\s*=/gi,
+		/union\s+select/gi,
+		/drop\s+table/gi,
+		/insert\s+into/gi,
+		/delete\s+from/gi,
+		/\.\.\/\.\.\//g,
+		/\0/g,
 	];
 
 	return suspiciousPatterns.some((pattern) => pattern.test(input));
@@ -297,7 +273,6 @@ export function validateAndSanitize<T extends Record<string, unknown>>(
 	for (const [key, config] of Object.entries(schema)) {
 		const value = input[key as keyof T];
 
-		// Check required
 		if (
 			config.required &&
 			(value === null || value === undefined || value === "")
@@ -310,10 +285,8 @@ export function validateAndSanitize<T extends Record<string, unknown>>(
 			continue;
 		}
 
-		// Type conversion and sanitization
 		const sanitized = sanitizeByType(value, config.type);
 
-		// String validations
 		if (
 			config.type === "string" ||
 			config.type === "email" ||

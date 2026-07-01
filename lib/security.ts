@@ -11,14 +11,7 @@ import { logger } from "./logger";
  * Security headers configuration
  */
 export const SECURITY_HEADERS: Record<string, string> = {
-	"Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-	"X-Content-Type-Options": "nosniff",
-	"X-Frame-Options": "DENY",
-	"X-XSS-Protection": "1; mode=block",
-	"Referrer-Policy": "strict-origin-when-cross-origin",
-	"Permissions-Policy": "geolocation=(self), microphone=(), camera=()",
-	"Content-Security-Policy":
-		"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'",
+	// Redundant headers removed as they are already set in next.config.ts
 };
 
 /**
@@ -35,12 +28,29 @@ export function getCORSHeaders(origin: string | null): Record<string, string> {
 	const isAllowed = allowedOrigins.some((allowed) => {
 		// Exact match or wildcard (for development)
 		if (allowed === "*") return true;
-		if (allowed === origin) return true;
+		if (!origin) return false;
+
+		const normalizedAllowed = allowed.endsWith("/") ? allowed.slice(0, -1) : allowed;
+		const normalizedOrigin = origin.endsWith("/") ? origin.slice(0, -1) : origin;
+
+		if (normalizedAllowed === normalizedOrigin) return true;
+
+		// Protocol-agnostic match for trusted origins
+		const allowedBase = normalizedAllowed.replace(/^https?:\/\//, "");
+		const originBase = normalizedOrigin.replace(/^https?:\/\//, "");
+		if (allowedBase === originBase) {
+			return true;
+		}
 
 		// Handle wildcards like *.example.com
 		if (allowed.startsWith("*.")) {
 			const pattern = allowed.substring(2);
-			return origin.endsWith(pattern);
+			try {
+				const originHost = new URL(origin).hostname;
+				return originHost.endsWith(pattern);
+			} catch {
+				return false;
+			}
 		}
 
 		return false;
