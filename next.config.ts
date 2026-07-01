@@ -184,17 +184,7 @@ const nextConfig: NextConfig = {
 					},
 				],
 			},
-			// All routes - security headers
-			{
-				source: "/(.*)",
-				headers: [
-					// Security headers - reduced to absolute minimum to prevent 494 errors
-					{
-						key: "X-Content-Type-Options",
-						value: "nosniff",
-					},
-				],
-			},
+			// Headers removed to stay within Vercel's limits and prevent 494 errors
 		];
 	},
 

@@ -95,11 +95,27 @@ export const authOptions: NextAuthOptions = {
 	session: {
 		strategy: "jwt",
 		maxAge: 7 * 24 * 60 * 60, // 7 days
-		updateAge: 24 * 60 * 60, // Update every 24 hours
 	},
 	cookies: {
 		sessionToken: {
 			name: `s`,
+			options: {
+				httpOnly: true,
+				sameSite: "lax",
+				path: "/",
+				secure: process.env.NODE_ENV === "production",
+			},
+		},
+		callbackUrl: {
+			name: `u`,
+			options: {
+				sameSite: "lax",
+				path: "/",
+				secure: process.env.NODE_ENV === "production",
+			},
+		},
+		csrfToken: {
+			name: `c`,
 			options: {
 				httpOnly: true,
 				sameSite: "lax",

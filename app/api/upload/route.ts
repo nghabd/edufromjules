@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole, badRequest } from "@/lib/api-auth";
 import { enforceTrustedOrigin } from "@/lib/request-security";
-import { sanitizeFileName } from "@/lib/input-sanitization";
+import { sanitizeFileName } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { getStorageService } from "@/lib/storage";
 import { validateFileUpload } from "@/lib/validation";

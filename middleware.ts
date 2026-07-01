@@ -1,7 +1,5 @@
-import { withAuth } from "next-auth/middleware";
-import type { NextRequestWithAuth } from "next-auth/middleware";
-import type { JWT } from "next-auth/jwt";
-import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { NextRequest, NextResponse } from "next/server";
 
 const PROTECTED_PREFIXES = ["/admin", "/supervisor", "/pharmacist"];
 
@@ -10,51 +8,61 @@ function isProtectedRoute(path: string) {
 	return PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
-const authMiddleware = withAuth(
-	function middleware(req: NextRequestWithAuth) {
-		const token = req.nextauth.token;
-		const path = req.nextUrl.pathname;
+export default async function middleware(req: NextRequest) {
+	const path = req.nextUrl.pathname;
+	const isProtected = isProtectedRoute(path);
 
-		if (path.startsWith("/admin") && token?.role !== "ADMIN") {
+	// Attempt to clear legacy bloated cookies that cause 494 errors
+	const legacyCookies = [
+		"next-auth.session-token",
+		"__Secure-next-auth.session-token",
+		"next-auth.callback-url",
+		"next-auth.csrf-token",
+		"pharma-session-v4",
+		"session-v5",
+	];
+
+	if (isProtected) {
+		const token = await getToken({
+			req,
+			secret: process.env.NEXTAUTH_SECRET,
+			cookieName: "s", // Matches the renamed cookie in lib/auth.ts
+		});
+
+		if (!token) {
+			const url = new URL("/login", req.url);
+			url.searchParams.set("callbackUrl", path);
+			return NextResponse.redirect(url);
+		}
+
+		// Role-based access control
+		if (path.startsWith("/admin") && token.role !== "ADMIN") {
 			return NextResponse.redirect(new URL("/unauthorized", req.url));
 		}
 
 		if (
 			path.startsWith("/supervisor") &&
-			token?.role !== "SUPERVISOR" &&
-			token?.role !== "ADMIN"
+			token.role !== "SUPERVISOR" &&
+			token.role !== "ADMIN"
 		) {
 			return NextResponse.redirect(new URL("/unauthorized", req.url));
 		}
 
-		if (path.startsWith("/pharmacist") && token?.role !== "PHARMACIST") {
+		if (path.startsWith("/pharmacist") && token.role !== "PHARMACIST") {
 			return NextResponse.redirect(new URL("/unauthorized", req.url));
 		}
-
-		return NextResponse.next();
-	},
-	{
-		callbacks: {
-			authorized: ({ token }: { token: JWT | null }) => !!token,
-		},
-	},
-);
-
-export default async function middleware(
-	request: NextRequest,
-	event: NextFetchEvent,
-) {
-	const path = request.nextUrl.pathname;
-	const isProtected = isProtectedRoute(path);
-
-	if (isProtected) {
-		return authMiddleware(
-			request as NextRequestWithAuth,
-			event,
-		);
 	}
 
-	return NextResponse.next();
+	const response = NextResponse.next();
+
+	// Explicitly clear legacy cookies on every response to help users recover
+	legacyCookies.forEach((name) => {
+		if (req.cookies.has(name)) {
+			response.cookies.set(name, "", { maxAge: 0, path: "/" });
+		}
+	});
+
+	return response;
 }
 
 export const config = {

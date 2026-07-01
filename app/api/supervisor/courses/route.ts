@@ -5,10 +5,12 @@ import { enforceTrustedOrigin } from "@/lib/request-security";
 import { courseBuilderSchema } from "@/lib/schemas";
 import {
 	buildTopicCreateData,
-	courseResponseInclude,
 } from "@/lib/course-payload";
+import { courseResponseInclude } from "@/lib/course-include";
 import { publishDashboardRefresh } from "@/lib/realtime-server";
 import { REALTIME_EVENTS } from "@/lib/realtime-events";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
 	try {
@@ -19,8 +21,10 @@ export async function POST(req: Request) {
 		if (error) return error;
 
 		const body = await req.json().catch(() => null);
+		console.log("[COURSE_CREATE] Received payload size:", JSON.stringify(body).length);
 		const parsed = courseBuilderSchema.safeParse(body);
 		if (!parsed.success) {
+			console.error("[COURSE_CREATE] Validation failed:", JSON.stringify(parsed.error.flatten(), null, 2));
 			return badRequest("Invalid course payload.", parsed.error.flatten());
 		}
 
@@ -31,7 +35,12 @@ export async function POST(req: Request) {
 				category: parsed.data.category,
 				topics: { create: buildTopicCreateData(parsed.data.topics) },
 			},
-			include: courseResponseInclude,
+			select: {
+				id: true,
+				title: true,
+				category: true,
+				createdAt: true,
+			},
 		});
 
 		await publishDashboardRefresh([
@@ -43,7 +52,8 @@ export async function POST(req: Request) {
 		return NextResponse.json(course, { status: 201 });
 	} catch (err) {
 		console.error("[COURSE_CREATE_ERROR]", err);
-		return serverError("Failed to create complex course");
+		const message = err instanceof Error ? err.message : "Failed to create course";
+		return NextResponse.json({ message, details: err }, { status: 500 });
 	}
 }
 

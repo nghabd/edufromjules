@@ -5,6 +5,8 @@ import { calculateLessonBasedCourseProgress } from "@/lib/course-progress";
 import { getMaterialDeliveryUrl } from "@/lib/material-url";
 import { issueCourseCertificateIfComplete } from "@/lib/certificates";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
 	const { error, session } = await requireRole(["PHARMACIST"]);
 	if (error) return error;
