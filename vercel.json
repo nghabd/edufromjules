@@ -3,83 +3,6 @@
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "env": {
-    "NEXT_PUBLIC_APP_URL": {
-      "description": "Public URL of your application (e.g., https://your-app.vercel.app)",
-      "required": true
-    },
-    "DATABASE_URL": {
-      "description": "PostgreSQL database connection string",
-      "required": true
-    },
-    "DATABASE_DIRECT_URL": {
-      "description": "Direct PostgreSQL connection string for Prisma migrations",
-      "required": true
-    },
-    "NEXTAUTH_SECRET": {
-      "description": "Secret key for NextAuth.js encryption",
-      "required": true,
-      "generator": "secret"
-    },
-    "NEXTAUTH_URL": {
-      "description": "URL for NextAuth.js (same as NEXT_PUBLIC_APP_URL)",
-      "required": true
-    },
-    "ALLOWED_ORIGINS": {
-      "description": "Comma-separated list of allowed CORS origins (e.g., https://your-app.vercel.app,https://customdomain.com)",
-      "required": true
-    },
-    "STORAGE_PROVIDER": {
-      "description": "Storage provider: local, r2, or s3",
-      "required": false,
-      "default": "local"
-    },
-    "REDIS_URL": {
-      "description": "Redis connection URL for session storage (optional but recommended for production)",
-      "required": false
-    },
-    "GOOGLE_CLIENT_ID": {
-      "description": "Google OAuth Client ID (optional)",
-      "required": false
-    },
-    "GOOGLE_CLIENT_SECRET": {
-      "description": "Google OAuth Client Secret (optional)",
-      "required": false
-    },
-    "CLOUDFLARE_ACCOUNT_ID": {
-      "description": "Cloudflare Account ID for R2 storage (if using R2)",
-      "required": false
-    },
-    "CLOUDFLARE_R2_ACCESS_KEY_ID": {
-      "description": "Cloudflare R2 Access Key ID (if using R2)",
-      "required": false
-    },
-    "CLOUDFLARE_R2_SECRET_ACCESS_KEY": {
-      "description": "Cloudflare R2 Secret Access Key (if using R2)",
-      "required": false
-    },
-    "CLOUDFLARE_R2_BUCKET": {
-      "description": "Cloudflare R2 Bucket name (if using R2)",
-      "required": false
-    },
-    "AWS_REGION": {
-      "description": "AWS Region for S3 (if using S3)",
-      "required": false
-    },
-    "AWS_ACCESS_KEY_ID": {
-      "description": "AWS Access Key ID (if using S3)",
-      "required": false
-    },
-    "AWS_SECRET_ACCESS_KEY": {
-      "description": "AWS Secret Access Key (if using S3)",
-      "required": false
-    },
-    "AWS_S3_BUCKET": {
-      "description": "AWS S3 Bucket name (if using S3)",
-      "required": false
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",
@@ -105,12 +28,6 @@
           "value": "camera=(), microphone=(), geolocation=(self)"
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
     }
   ]
 }
