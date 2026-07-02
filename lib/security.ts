@@ -17,8 +17,7 @@ export const SECURITY_HEADERS: Record<string, string> = {
 	"X-XSS-Protection": "1; mode=block",
 	"Referrer-Policy": "strict-origin-when-cross-origin",
 	"Permissions-Policy": "geolocation=(self), microphone=(), camera=()",
-	"Content-Security-Policy":
-		"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'",
+	// CSP is now handled by middleware.ts with nonce-based approach
 };
 
 /**
