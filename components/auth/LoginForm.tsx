@@ -1,18 +1,16 @@
 "use client";
 
 import { FormEvent, useState, useEffect } from "react";
-import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import toast from "react-hot-toast";
 import { Loader2, AlertCircle, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { dashboardPathByRole } from "@/lib/routes";
+import { useAuthRedirect } from "@/components/auth/useAuthRedirect";
 
 export const LoginForm = () => {
-	const router = useRouter();
-	const { data: session, status } = useSession(); // Use useSession instead of getSession() inside submit
+	useAuthRedirect();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
@@ -30,14 +28,6 @@ export const LoginForm = () => {
 		}
 	}, []);
 
-	// Automatically redirect if already authenticated
-	useEffect(() => {
-		if (status === "authenticated" && session?.user?.role) {
-			const targetPath =
-				dashboardPathByRole[session.user.role] ?? "/pharmacist";
-			router.replace(targetPath);
-		}
-	}, [status, session, router]);
 
 	// Input validation
 	const isEmailValid = email.includes("@") && email.includes(".");

@@ -65,7 +65,7 @@ function normalizeQuestion(question: QuizQuestionInput) {
 	};
 }
 
-export function normalizeCourseBuilderPayload(payload: any) {
+export function normalizeCourseBuilderPayload(payload: unknown): CourseBuilderInput {
 	const source = asRecord(payload);
 	const topics = asArray(source.topics);
 
@@ -81,7 +81,7 @@ export function normalizeCourseBuilderPayload(payload: any) {
 					return {
 						id: asTrimmedString(material.id),
 						title: asTrimmedString(material.title),
-						type: asTrimmedString(material.type) || "RICH_TEXT",
+						type: (asTrimmedString(material.type) || "RICH_TEXT") as CourseBuilderInput["topics"][number]["materials"][number]["type"],
 						url: asTrimmedString(material.url),
 						content: asTrimmedString(material.content),
 						storageProvider: asTrimmedString(material.storageProvider) || undefined,
@@ -144,7 +144,7 @@ export function normalizeCourseBuilderPayload(payload: any) {
 								return {
 									id: asTrimmedString(questionRecord.id),
 									question: asTrimmedString(questionRecord.question),
-									type: asTrimmedString(questionRecord.type) || "RADIO",
+									type: (asTrimmedString(questionRecord.type) || "RADIO") as "RADIO" | "SELECT" | "MULTI_SELECT" | "TRUE_FALSE" | "COMPLETE",
 									options: parseStringArray(questionRecord.options),
 									correctAnswers: parseStringArray(
 										questionRecord.correctAnswers ??
@@ -166,7 +166,7 @@ export function normalizeCourseBuilderPayload(payload: any) {
 }
 
 export function buildMaterialWriteData(
-	material: any,
+	material: CourseBuilderInput["topics"][number]["materials"][number],
 	index: number,
 ) {
 	const storageKey = material.storageKey?.trim() || undefined;
