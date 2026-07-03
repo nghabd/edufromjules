@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Header } from "@/components/layout/Header";
@@ -16,14 +17,16 @@ export const metadata: Metadata = {
 	applicationName: "edustation",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
+	const nonce = (await headers()).get("x-nonce") ?? undefined;
+
 	return (
-		<html lang="en" suppressHydrationWarning>
-			<body className={inter.className}>
+		<html lang="en" suppressHydrationWarning nonce={nonce}>
+			<body className={inter.className} nonce={nonce}>
 				<Providers>
 					<div className="flex min-h-screen flex-col bg-background text-foreground">
 						<Header />

@@ -5,6 +5,7 @@ import { Server as SocketIOServer, Socket as IOSocket } from "socket.io";
 import { verify, JwtPayload } from "jsonwebtoken";
 import { prisma } from "./prisma";
 import { logger } from "./logger";
+import { getDeploymentOrigins } from "./origins";
 
 export type NextApiResponseServerIO = NextApiResponse & {
 	socket: NetSocket & {
@@ -123,15 +124,12 @@ async function authenticateSocket(socket: AuthenticatedSocket, next: (err?: Erro
  */
 export function initSocket(server: NetServer) {
 	if (!io) {
-		const origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-		const allowedOrigins = (process.env.ALLOWED_ORIGINS || origin)
-			.split(",")
-			.map((value) => value.trim())
-			.filter(Boolean);
+		const allowedOrigins = getDeploymentOrigins();
+		const corsOrigins = allowedOrigins.length > 0 ? allowedOrigins : ["http://localhost:3000"];
 
 		io = new SocketIOServer(server, {
 			cors: {
-				origin: allowedOrigins,
+				origin: corsOrigins,
 				methods: ["GET", "POST"],
 				credentials: true,
 				allowedHeaders: ["Authorization"],
@@ -268,7 +266,7 @@ export function initSocket(server: NetServer) {
 			});
 		});
 
-		logger.info("[SOCKET_INITIALIZED]", { corsOrigin: allowedOrigins });
+		logger.info("[SOCKET_INITIALIZED]", { corsOrigin: corsOrigins });
 	}
 }
 

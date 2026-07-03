@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
-
-function trimTrailingSlash(value: string): string {
-	return value.endsWith("/") ? value.slice(0, -1) : value;
-}
+import {
+	getDeploymentOrigins,
+	isAllowedOrigin,
+	normalizeOrigin,
+} from "@/lib/origins";
 
 export function getAllowedOrigins(): string[] {
-	const configured = process.env.ALLOWED_ORIGINS || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
-	return configured
-		.split(",")
-		.map((origin) => origin.trim())
-		.filter(Boolean)
-		.map(trimTrailingSlash);
+	return getDeploymentOrigins();
 }
 
 export function getClientIp(request: Request): string {
@@ -32,7 +28,7 @@ export function enforceTrustedOrigin(request: Request): NextResponse | null {
 		return null;
 	}
 
-	const requestOrigin = trimTrailingSlash(new URL(request.url).origin);
+	const requestOrigin = normalizeOrigin(new URL(request.url).origin);
 	const configuredOrigins = getAllowedOrigins();
 	const allowedOrigins = [...new Set([...configuredOrigins, requestOrigin])];
 
@@ -40,8 +36,8 @@ export function enforceTrustedOrigin(request: Request): NextResponse | null {
 	const referer = request.headers.get("referer");
 
 	if (origin) {
-		const normalizedOrigin = trimTrailingSlash(origin);
-		if (!allowedOrigins.includes(normalizedOrigin)) {
+		const normalizedOrigin = normalizeOrigin(origin);
+		if (!isAllowedOrigin(normalizedOrigin) && !allowedOrigins.includes(normalizedOrigin)) {
 			return NextResponse.json({ message: "Forbidden origin." }, { status: 403 });
 		}
 		return null;
@@ -49,8 +45,8 @@ export function enforceTrustedOrigin(request: Request): NextResponse | null {
 
 	if (referer) {
 		try {
-			const refererOrigin = trimTrailingSlash(new URL(referer).origin);
-			if (!allowedOrigins.includes(refererOrigin)) {
+			const refererOrigin = normalizeOrigin(new URL(referer).origin);
+			if (!isAllowedOrigin(refererOrigin) && !allowedOrigins.includes(refererOrigin)) {
 				return NextResponse.json({ message: "Forbidden origin." }, { status: 403 });
 			}
 		} catch {

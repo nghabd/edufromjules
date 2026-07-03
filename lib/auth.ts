@@ -7,6 +7,9 @@ import { prisma } from "@/lib/prisma";
 import { getAvatarUrl } from "@/lib/avatar";
 import { validateEmail } from "@/lib/validation";
 
+const useSecureCookies = process.env.NODE_ENV === "production";
+const cookiePrefix = useSecureCookies ? "__Secure-" : "";
+
 type AuthUser = {
 	id: string;
 	email: string;
@@ -115,30 +118,50 @@ export const authOptions: NextAuthOptions = {
 
 			return true;
 		},
-		async jwt({ token, user, trigger, session }) {
+		async jwt({ token, user }) {
+			// Keep JWT payload minimal to avoid oversized session cookies.
 			if (user) {
+				token.sub = user.id;
 				token.role = user.role || "PHARMACIST";
-				token.id = user.id;
-				token.email = user.email;
-				token.name = user.name;
-				token.image = getAvatarUrl(user.id, user.image);
-			}
-
-			if (trigger === "update" && session?.user) {
-				token.name = session.user.name ?? token.name;
-				token.image = session.user.image ?? token.image ?? null;
 			}
 			return token;
 		},
 		async session({ session, token }) {
-			if (session.user) {
-				session.user.role = token.role as string;
-				session.user.id = token.id as string;
-				session.user.email = token.email as string;
-				session.user.name = token.name as string;
-				session.user.image = (token.image as string | null) ?? null;
+			const userId = token.sub;
+			if (!userId || !session.user) {
+				return session;
 			}
+
+			const dbUser = await prisma.user.findUnique({
+				where: { id: userId },
+				select: {
+					id: true,
+					role: true,
+					email: true,
+					name: true,
+					image: true,
+				},
+			});
+
+			if (!dbUser) {
+				return session;
+			}
+
+			session.user.id = dbUser.id;
+			session.user.role = dbUser.role;
+			session.user.email = dbUser.email;
+			session.user.name = dbUser.name ?? dbUser.email;
+			session.user.image = getAvatarUrl(dbUser.id, dbUser.image);
 			return session;
+		},
+		async redirect({ url, baseUrl }) {
+			if (url.startsWith("/")) {
+				return `${baseUrl}${url}`;
+			}
+			if (url.startsWith(baseUrl)) {
+				return url;
+			}
+			return baseUrl;
 		},
 	},
 	pages: {
@@ -147,9 +170,37 @@ export const authOptions: NextAuthOptions = {
 	},
 	// SECURITY: Ensure secret is set
 	secret: process.env.NEXTAUTH_SECRET,
-	// JWT settings
 	jwt: {
 		maxAge: 7 * 24 * 60 * 60, // 7 days
+	},
+	cookies: {
+		sessionToken: {
+			name: `${cookiePrefix}next-auth.session-token`,
+			options: {
+				httpOnly: true,
+				sameSite: "lax",
+				path: "/",
+				secure: useSecureCookies,
+			},
+		},
+		callbackUrl: {
+			name: `${cookiePrefix}next-auth.callback-url`,
+			options: {
+				httpOnly: true,
+				sameSite: "lax",
+				path: "/",
+				secure: useSecureCookies,
+			},
+		},
+		csrfToken: {
+			name: `${useSecureCookies ? "__Host-" : ""}next-auth.csrf-token`,
+			options: {
+				httpOnly: true,
+				sameSite: "lax",
+				path: "/",
+				secure: useSecureCookies,
+			},
+		},
 	},
 	// Event logging for security auditing
 	events: {

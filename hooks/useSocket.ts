@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { useSession } from "next-auth/react";
+import { getClientAppOrigin } from "@/lib/client-origin";
 
 export function useSocket(userId?: string, groupId?: string) {
 	const socketRef = useRef<Socket | undefined>(undefined);
@@ -23,7 +24,7 @@ export function useSocket(userId?: string, groupId?: string) {
 
 			if (!isMounted) return;
 
-			socketInstance = io(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000", {
+			socketInstance = io(getClientAppOrigin(), {
 				auth: { token },
 				transports: ["websocket", "polling"],
 				reconnection: true,

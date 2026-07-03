@@ -1,5 +1,4 @@
-export const dashboardPathByRole: Record<string, string> = {
-  ADMIN: "/admin",
-  SUPERVISOR: "/supervisor",
-  PHARMACIST: "/pharmacist",
-};
+export {
+	DASHBOARD_PATH_BY_ROLE as dashboardPathByRole,
+	getDashboardPath,
+} from "@/lib/auth-routing";

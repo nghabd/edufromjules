@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getEnv } from "./env";
+import { isAllowedOrigin } from "./origins";
 import { logger } from "./logger";
 
 /**
@@ -24,29 +24,10 @@ export const SECURITY_HEADERS: Record<string, string> = {
  * CORS configuration
  */
 export function getCORSHeaders(origin: string | null): Record<string, string> {
-	const env = getEnv();
-	const allowedOrigins = env.allowedOrigins || [];
-
-	if (!origin) {
-		return {};
-	}
-
-	const isAllowed = allowedOrigins.some((allowed) => {
-		// Exact match or wildcard (for development)
-		if (allowed === "*") return true;
-		if (allowed === origin) return true;
-
-		// Handle wildcards like *.example.com
-		if (allowed.startsWith("*.")) {
-			const pattern = allowed.substring(2);
-			return origin.endsWith(pattern);
+	if (!origin || !isAllowedOrigin(origin)) {
+		if (origin) {
+			logger.warn("[CORS_BLOCKED]", { origin });
 		}
-
-		return false;
-	});
-
-	if (!isAllowed) {
-		logger.warn("[CORS_BLOCKED]", { origin, allowedOrigins });
 		return {};
 	}
 
@@ -64,20 +45,8 @@ export function getCORSHeaders(origin: string | null): Record<string, string> {
  */
 export function validateOrigin(req: NextRequest): boolean {
 	const origin = req.headers.get("origin");
-	if (!origin) return true; // Allow requests without origin (SSR, etc)
-
-	const env = getEnv();
-	const allowedOrigins = env.allowedOrigins || [];
-
-	return allowedOrigins.some((allowed) => {
-		if (allowed === "*") return true;
-		if (allowed === origin) return true;
-		if (allowed.startsWith("*.")) {
-			const pattern = allowed.substring(2);
-			return origin.endsWith(pattern);
-		}
-		return false;
-	});
+	if (!origin) return true;
+	return isAllowedOrigin(origin);
 }
 
 /**
