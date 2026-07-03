@@ -13,6 +13,7 @@ export default async function middleware(req: NextRequest) {
 	const isProtected = isProtectedRoute(path);
 
 	// Attempt to clear legacy bloated cookies that cause 494 errors
+	// We only clear if they exist to keep header size small
 	const legacyCookies = [
 		"next-auth.session-token",
 		"__Secure-next-auth.session-token",
@@ -23,10 +24,13 @@ export default async function middleware(req: NextRequest) {
 	];
 
 	if (isProtected) {
+		// In production, NextAuth prefixes cookies with __Secure-
+		const cookieName = process.env.NODE_ENV === "production" ? "__Secure-s" : "s";
+
 		const token = await getToken({
 			req,
 			secret: process.env.NEXTAUTH_SECRET,
-			cookieName: "s", // Matches the renamed cookie in lib/auth.ts
+			cookieName,
 		});
 
 		if (!token) {

@@ -21,3 +21,5 @@ https://next-auth.js.org/warnings#nextauth_url
 [next-auth][warn][NO_SECRET]
 https://next-auth.js.org/warnings#no_secret
  GET /api/auth/session 200 in 2.9s (next.js: 2.9s, proxy.ts: 11ms, application-code: 44ms)
+✓ Compiled in 851ms
+✓ Compiled in 5ms
