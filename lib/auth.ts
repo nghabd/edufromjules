@@ -126,20 +126,25 @@ export const authOptions: NextAuthOptions = {
 			// with a 494 Request Header Too Large.
 			//
 			// Only two fields are ever allowed in this JWT: `sub` and `role`.
-			const cleanToken: { sub?: string; role?: string } = {};
+			// `role` must always resolve to a real string (never undefined) to
+			// satisfy this project's JWT type augmentation, which declares
+			// `role` as required.
+			const fallbackRole = (token?.role as string) || "PHARMACIST";
 
 			if (user) {
 				// Fresh sign-in: derive from the authenticated user object only.
-				cleanToken.sub = user.id;
-				cleanToken.role = (user as AuthUser).role || "PHARMACIST";
-			} else if (token?.sub) {
-				// Token refresh: keep only sub/role, drop everything else that
-				// may have accumulated in the incoming token.
-				cleanToken.sub = token.sub as string;
-				cleanToken.role = token.role as string | undefined;
+				return {
+					sub: user.id,
+					role: (user as AuthUser).role || "PHARMACIST",
+				} as typeof token;
 			}
 
-			return cleanToken;
+			// Token refresh: keep only sub/role, drop everything else that may
+			// have accumulated in the incoming token.
+			return {
+				sub: token?.sub,
+				role: fallbackRole,
+			} as typeof token;
 		},
 		async session({ session, token }) {
 			const userId = token.sub;
