@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, serverError } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
-import { courseResponseInclude } from "@/lib/course-payload";
+import { courseResponseInclude } from "@/lib/course-payload-read";
 
 export async function GET() {
 	try {

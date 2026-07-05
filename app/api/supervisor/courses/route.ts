@@ -6,7 +6,7 @@ import { courseBuilderSchema } from "@/lib/schemas";
 import {
 	buildTopicCreateData,
 	courseResponseInclude,
-} from "@/lib/course-payload";
+} from "@/lib/course-payload-write";
 import { publishDashboardRefresh } from "@/lib/realtime-server";
 import { REALTIME_EVENTS } from "@/lib/realtime-events";
 

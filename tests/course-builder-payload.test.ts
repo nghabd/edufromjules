@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeCourseBuilderPayload } from "../lib/course-payload";
+import { normalizeCourseBuilderPayload } from "../lib/course-payload-write";
 import { sanitizeHTML } from "../lib/input-sanitization";
 
 describe("course builder payload handling", () => {
