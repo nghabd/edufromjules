@@ -119,12 +119,27 @@ export const authOptions: NextAuthOptions = {
 			return true;
 		},
 		async jwt({ token, user }) {
-			// Keep JWT payload minimal to avoid oversized session cookies.
+			// CRITICAL: Always rebuild the token from scratch. Never spread or
+			// carry forward the incoming `token` object's unknown fields — that
+			// is what causes silent token bloat across refresh cycles, which
+			// eventually oversizes the session cookie and breaks every request
+			// with a 494 Request Header Too Large.
+			//
+			// Only two fields are ever allowed in this JWT: `sub` and `role`.
+			const cleanToken: { sub?: string; role?: string } = {};
+
 			if (user) {
-				token.sub = user.id;
-				token.role = user.role || "PHARMACIST";
+				// Fresh sign-in: derive from the authenticated user object only.
+				cleanToken.sub = user.id;
+				cleanToken.role = (user as AuthUser).role || "PHARMACIST";
+			} else if (token?.sub) {
+				// Token refresh: keep only sub/role, drop everything else that
+				// may have accumulated in the incoming token.
+				cleanToken.sub = token.sub as string;
+				cleanToken.role = token.role as string | undefined;
 			}
-			return token;
+
+			return cleanToken;
 		},
 		async session({ session, token }) {
 			const userId = token.sub;
