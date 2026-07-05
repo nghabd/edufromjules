@@ -76,10 +76,7 @@ export default async function proxy(
 		const requestWithNonce = new NextRequest(request.url, {
 			headers: requestHeaders,
 		});
-		return authMiddleware(
-			requestWithNonce as NextRequestWithAuth,
-			event,
-		);
+		return authMiddleware(requestWithNonce as NextRequestWithAuth, event);
 	}
 
 	const response = NextResponse.next({
@@ -88,6 +85,9 @@ export default async function proxy(
 	return applyCsp(response, nonce);
 }
 
+// export const config = {
+// 	matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+// };
 export const config = {
-	matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+	matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth).*)"],
 };
