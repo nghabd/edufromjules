@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Header } from "@/components/layout/Header";
@@ -21,16 +22,12 @@ export default async function RootLayout({
 }: {
 	children: React.ReactNode;
 }) {
+	const nonce = (await headers()).get("x-nonce") ?? "";
+
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<head>
-				<meta
-					httpEquiv="Content-Security-Policy"
-					content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https:; frame-ancestors 'self';"
-				/>
-			</head>
 			<body className={inter.className}>
-				<Providers>
+				<Providers nonce={nonce}>
 					<div className="flex min-h-screen flex-col bg-background text-foreground">
 						<Header />
 						<main className="flex-1">{children}</main>
