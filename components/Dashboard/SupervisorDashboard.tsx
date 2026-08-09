@@ -27,6 +27,12 @@ import { AddTraineeModal } from "@/components/Dashboard/supervisor/AddTraineeMod
 import { AssignCourseModal } from "@/components/Dashboard/supervisor/AssignCourseModal";
 import { BulkAssignModal } from "@/components/Dashboard/supervisor/BulkAssignModal";
 import { CourseBuilderModal } from "@/components/Dashboard/shared/CourseBuilderModal";
+import { CourseCard } from "@/components/courses/CourseCard";
+import { CourseTopicList } from "@/components/courses/CourseTopicList";
+import {
+	CourseDetailDialog,
+	type CourseDetailData,
+} from "@/components/courses/CourseDetailDialog";
 import { useRealtimeQueryInvalidation } from "@/components/realtime/useRealtimeQueryInvalidation";
 import { REALTIME_EVENTS } from "@/lib/realtime-events";
 import { SupervisorAnalytics } from "@/components/analytics/SupervisorAnalytics";
@@ -103,6 +109,8 @@ export function SupervisorDashboard() {
 	const [isBulkAssignOpen, setIsBulkAssignOpen] = useState(false);
 	const [editingCourse, setEditingCourse] = useState<CourseSummary | null>(null);
 	const [assigningCourse, setAssigningCourse] = useState<CourseSummary | null>(null);
+	const [viewingCourse, setViewingCourse] = useState<CourseDetailData | null>(null);
+	const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
 	const [expandedTrainee, setExpandedTrainee] = useState<string | null>(null);
 	const [traineeFilter, setTraineeFilter] = useState<
 		"all" | "completed" | "at-risk"
@@ -444,58 +452,70 @@ export function SupervisorDashboard() {
 										onChange={(event) => setSearchCourses(event.target.value)}
 									/>
 								</div>
-								<div className="max-h-[560px] divide-y divide-border overflow-y-auto">
+								<div className="max-h-[560px] space-y-3 overflow-y-auto p-3">
 									{isLoading && [0, 1].map((index) => <RowSkeleton key={index} />)}
 									{!isLoading && filteredCourses.length === 0 && (
-										<p className="p-6 text-sm text-muted-foreground">
+										<p className="p-6 text-center text-sm text-muted-foreground">
 											No courses found.
 										</p>
 									)}
 									{filteredCourses.map((course) => (
-										<div
+										<CourseCard
 											key={course.id}
-											className="flex items-center justify-between gap-3 p-4"
-										>
-											<div className="min-w-0">
-												<p className="truncate text-sm font-semibold">
-													{course.title}
-												</p>
-												<div className="mt-1 flex flex-wrap gap-2">
-													<Badge variant="secondary">{course.category}</Badge>
-													<Badge variant="outline">
-														{course._count?.assignments ?? 0} assigned
-													</Badge>
-												</div>
-											</div>
-											<div className="flex shrink-0 gap-2">
-												<Button
-													type="button"
-													size="sm"
-													onClick={() => setAssigningCourse(course)}
-												>
-													<UserCheck className="h-4 w-4" />
-												</Button>
-												<Button
-													type="button"
-													size="sm"
-													variant="outline"
-													onClick={() => {
+											title={course.title}
+											category={course.category}
+											meta={[
+												{
+													label: "assigned",
+													value: course._count?.assignments ?? 0,
+												},
+											]}
+											expanded={expandedCourses.has(course.id)}
+											onToggle={() =>
+												setExpandedCourses((current) => {
+													const next = new Set(current);
+													if (next.has(course.id)) next.delete(course.id);
+													else next.add(course.id);
+													return next;
+												})
+											}
+											actions={[
+												{
+													label: "Assign",
+													icon: <UserCheck className="mr-1 h-4 w-4" />,
+													onClick: () => setAssigningCourse(course),
+												},
+												{
+													label: "Details",
+													variant: "outline",
+													icon: <BookOpen className="mr-1 h-4 w-4" />,
+													onClick: () => setViewingCourse(course as CourseDetailData),
+												},
+												{
+													label: "Edit",
+													variant: "outline",
+													icon: <Edit2 className="mr-1 h-4 w-4" />,
+													onClick: () => {
 														setEditingCourse(course);
 														setIsAddCourseOpen(true);
-													}}
-												>
-													<Edit2 className="h-4 w-4" />
-												</Button>
-												<Button
-													type="button"
-													size="sm"
-													variant="destructive"
-													onClick={() => deleteCourse.mutate(course.id)}
-												>
-													<Trash2 className="h-4 w-4" />
-												</Button>
-											</div>
-										</div>
+													},
+												},
+												{
+													label: "Delete",
+													variant: "destructive",
+													icon: <Trash2 className="mr-1 h-4 w-4" />,
+													disabled: deleteCourse.isPending,
+													onClick: () => deleteCourse.mutate(course.id),
+												},
+											]}
+										>
+											<CourseTopicList
+												// eslint-disable-next-line @typescript-eslint/no-explicit-any
+												topics={(course.topics ?? []) as any}
+												// eslint-disable-next-line @typescript-eslint/no-explicit-any
+												quizzes={(course.quizzes ?? []) as any}
+											/>
+										</CourseCard>
 									))}
 								</div>
 							</SectionCard>
@@ -600,6 +620,12 @@ export function SupervisorDashboard() {
 					onClose={() => setAssigningCourse(null)}
 				/>
 			)}
+
+			<CourseDetailDialog
+				open={Boolean(viewingCourse)}
+				onOpenChange={(open) => !open && setViewingCourse(null)}
+				course={viewingCourse}
+			/>
 
 			<CourseBuilderModal
 				isOpen={isAddCourseOpen}

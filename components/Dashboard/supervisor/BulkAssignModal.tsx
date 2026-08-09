@@ -51,10 +51,10 @@ export function BulkAssignModal({ isOpen, onClose, pharmacists, courses }: Props
 
 	const assign = useMutation({
 		mutationFn: async () =>
-			axios.post("/api/supervisor/bulk-assign", {
-				courseId,
+			axios.post(`/api/supervisor/courses/${courseId}/assign`, {
 				pharmacistIds: [...selectedIds],
 				dueDate: dueDate || null,
+				sendEmails: true,
 			}),
 		onSuccess: (res) => {
 			toast.success(`Assigned to ${res.data.assigned} pharmacist(s)`);
@@ -64,7 +64,13 @@ export function BulkAssignModal({ isOpen, onClose, pharmacists, courses }: Props
 			setCourseId("");
 			setDueDate("");
 		},
-		onError: () => toast.error("Bulk assign failed"),
+		onError: (err: unknown) => {
+			const message =
+				axios.isAxiosError(err) && typeof err.response?.data?.message === "string"
+					? err.response.data.message
+					: "Bulk assign failed";
+			toast.error(message);
+		},
 	});
 
 	if (!isOpen) return null;

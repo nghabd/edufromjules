@@ -54,9 +54,9 @@ export function AssignCourseModal({
 
 	const assignCourse = useMutation({
 		mutationFn: async () =>
-			axios.post("/api/supervisor/assignments", {
-				courseId: course.id,
+			axios.post(`/api/supervisor/courses/${course.id}/assign`, {
 				userIds: selectedTrainees,
+				dueDate: null,
 			}),
 		onSuccess: () => {
 			toast.success("Course assigned");

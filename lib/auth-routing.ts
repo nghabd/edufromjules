@@ -11,6 +11,7 @@ export const ROUTE_ROLE_ACCESS: Record<string, Role[]> = {
 	"/admin": ["ADMIN"],
 	"/supervisor": ["SUPERVISOR", "ADMIN"],
 	"/pharmacist": ["PHARMACIST"],
+	"/certificates": ["PHARMACIST", "SUPERVISOR", "ADMIN"],
 };
 
 const PROTECTED_PREFIXES = Object.keys(ROUTE_ROLE_ACCESS);

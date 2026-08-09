@@ -9,8 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useState, useMemo } from "react";
-import { CourseBuilderModal } from "@/components/Dashboard/shared/CourseBuilderModal";
 import { UserModal } from "@/components/Dashboard/admin/UserModal";
+import { CourseCard } from "@/components/courses/CourseCard";
+import { CourseTopicList } from "@/components/courses/CourseTopicList";
+import {
+	CourseDetailDialog,
+	type CourseDetailData,
+} from "@/components/courses/CourseDetailDialog";
 import { useRealtimeQueryInvalidation } from "@/components/realtime/useRealtimeQueryInvalidation";
 import { REALTIME_EVENTS } from "@/lib/realtime-events";
 import { AdminAnalytics } from "@/components/analytics/AdminAnalytics";
@@ -52,8 +57,8 @@ export function AdminDashboard() {
 	const [activeTab, setActiveTab] = useState<"overview" | "analytics">("overview");
 	const [searchUsers, setSearchUsers] = useState("");
 	const [searchCourses, setSearchCourses] = useState("");
-	const [isCourseBuilderOpen, setIsCourseBuilderOpen] = useState(false);
-	const [editingCourse, setEditingCourse] = useState<AdminCourse | null>(null);
+	const [viewingCourse, setViewingCourse] = useState<CourseDetailData | null>(null);
+	const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
 	const [userModalState, setUserModalState] = useState<{
 		isOpen: boolean;
 		user: AdminUser | null;
@@ -238,17 +243,6 @@ export function AdminDashboard() {
 										{isLoading ? "Loading..." : `${filteredCourses.length} courses`}
 									</p>
 								</div>
-								<Button
-									type="button"
-									size="sm"
-									className="bg-green-600 text-white"
-									onClick={() => {
-										setEditingCourse(null);
-										setIsCourseBuilderOpen(true);
-									}}
-								>
-									<Plus className="h-4 w-4" /> Build Course
-								</Button>
 							</summary>
 							<div className="p-6">
 								<Input
@@ -256,7 +250,7 @@ export function AdminDashboard() {
 									value={searchCourses}
 									onChange={(e) => setSearchCourses(e.target.value)}
 								/>
-								<div className="mt-4 max-h-[500px] overflow-y-auto divide-y divide-border rounded-xl border border-border">
+								<div className="mt-4 max-h-[500px] space-y-3 overflow-y-auto">
 									{isLoading &&
 										[0, 1, 2].map((index) => (
 											<RowSkeleton key={`course-${index}`} />
@@ -267,38 +261,48 @@ export function AdminDashboard() {
 										</p>
 									)}
 									{filteredCourses.map((course) => (
-										<div
+										<CourseCard
 											key={course.id}
-											className="flex items-center justify-between gap-3 p-4"
+											title={course.title}
+											category={course.category}
+											meta={[
+												{
+													label: "assigned",
+													value: course._count?.assignments ?? 0,
+												},
+											]}
+											expanded={expandedCourses.has(course.id)}
+											onToggle={() =>
+												setExpandedCourses((current) => {
+													const next = new Set(current);
+													if (next.has(course.id)) next.delete(course.id);
+													else next.add(course.id);
+													return next;
+												})
+											}
+											actions={[
+												{
+													label: "Details",
+													variant: "outline",
+													icon: <BookOpen className="mr-1 h-4 w-4" />,
+													onClick: () => setViewingCourse(course as CourseDetailData),
+												},
+												{
+													label: "Delete",
+													variant: "destructive",
+													icon: <Trash2 className="mr-1 h-4 w-4" />,
+													disabled: deleteCourse.isPending,
+													onClick: () => deleteCourse.mutate(course.id),
+												},
+											]}
 										>
-											<div className="min-w-0">
-												<p className="truncate text-sm font-medium">
-													{course.title}
-												</p>
-												<p className="text-xs text-muted-foreground">
-													{course.category}
-												</p>
-											</div>
-											<div className="flex shrink-0 gap-2">
-												<Button
-													variant="outline"
-													size="icon"
-													onClick={() => {
-														setEditingCourse(course);
-														setIsCourseBuilderOpen(true);
-													}}
-												>
-													<Edit2 className="h-3 w-3" />
-												</Button>
-												<Button
-													variant="destructive"
-													size="icon"
-													onClick={() => deleteCourse.mutate(course.id)}
-												>
-													<Trash2 className="h-3 w-3" />
-												</Button>
-											</div>
-										</div>
+											<CourseTopicList
+												// eslint-disable-next-line @typescript-eslint/no-explicit-any
+												topics={(course.topics ?? []) as any}
+												// eslint-disable-next-line @typescript-eslint/no-explicit-any
+												quizzes={(course.quizzes ?? []) as any}
+											/>
+										</CourseCard>
 									))}
 								</div>
 							</div>
@@ -312,13 +316,10 @@ export function AdminDashboard() {
 				supervisors={supervisorsList}
 				onClose={() => setUserModalState({ isOpen: false, user: null })}
 			/>
-			<CourseBuilderModal
-				isOpen={isCourseBuilderOpen}
-				editingCourse={editingCourse}
-				onClose={() => {
-					setIsCourseBuilderOpen(false);
-					setEditingCourse(null);
-				}}
+			<CourseDetailDialog
+				open={Boolean(viewingCourse)}
+				onOpenChange={(open) => !open && setViewingCourse(null)}
+				course={viewingCourse}
 			/>
 			</div>
 		</div>

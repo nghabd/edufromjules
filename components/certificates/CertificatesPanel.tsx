@@ -106,17 +106,16 @@ export function CertificatesPanel() {
 								<span className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">
 									Certificate of Completion
 								</span>
-								<button
+								<a
+									href={`/certificates/${cert.id}`}
+									target="_blank"
+									rel="noopener noreferrer"
 									className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 font-medium transition-colors"
-									onClick={() => {
-										// Print/download the certificate
-										window.print();
-									}}
 									title="Download certificate"
 								>
 									<Download className="h-3.5 w-3.5" />
 									Download
-								</button>
+								</a>
 							</div>
 						</div>
 					</Card>

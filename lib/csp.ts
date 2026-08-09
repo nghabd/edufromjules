@@ -13,6 +13,7 @@ export function buildCspHeader(nonce: string): string {
 		"media-src 'self' blob: https:",
 		"font-src 'self' data:",
 		"connect-src 'self' https: wss:",
+		"frame-src 'self' https://*.r2.cloudflarestorage.com https://*.r2.dev",
 		"object-src 'none'",
 		"base-uri 'self'",
 		"form-action 'self'",
