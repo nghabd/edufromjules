@@ -464,9 +464,29 @@ export class StorageService {
 
 // Singleton instance
 let storageServiceInstance: StorageService | null = null;
+let storageConfigSignature = "";
+
+function configSignature(config: StorageConfig): string {
+	return [
+		config.provider,
+		config.bucket,
+		config.endpoint,
+		config.region,
+		config.accessKeyId,
+		config.secretAccessKey,
+		config.publicUrl,
+	].join("|");
+}
 
 export function getStorageService(): StorageService {
-	if (!storageServiceInstance) {
+	const currentConfig = getStorageConfig();
+	const currentSignature = configSignature(currentConfig);
+
+	if (
+		!storageServiceInstance ||
+		storageConfigSignature !== currentSignature
+	) {
+		storageConfigSignature = currentSignature;
 		storageServiceInstance = new StorageService();
 	}
 	return storageServiceInstance;

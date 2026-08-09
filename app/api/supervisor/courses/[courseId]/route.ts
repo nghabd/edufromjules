@@ -252,24 +252,27 @@ export async function PATCH(
 			return badRequest("Invalid course payload.", parsed.error.flatten());
 		}
 
-		const updatedCourse = await prisma.$transaction(async (tx) => {
-			await tx.course.update({
-				where: { id: courseId },
-				data: {
-					title: parsed.data.title,
-					description: parsed.data.description,
-					category: parsed.data.category,
-				},
-			});
+		const updatedCourse = await prisma.$transaction(
+			async (tx) => {
+				await tx.course.update({
+					where: { id: courseId },
+					data: {
+						title: parsed.data.title,
+						description: parsed.data.description,
+						category: parsed.data.category,
+					},
+				});
 
-			await syncCourseTopics(tx, courseId, parsed.data.topics);
-			await ensureAssignedMaterialProgress(tx, courseId);
+				await syncCourseTopics(tx, courseId, parsed.data.topics);
+				await ensureAssignedMaterialProgress(tx, courseId);
 
-			return tx.course.findUniqueOrThrow({
-				where: { id: courseId },
-				include: courseResponseInclude,
-			});
-		});
+				return tx.course.findUniqueOrThrow({
+					where: { id: courseId },
+					include: courseResponseInclude,
+				});
+			},
+			{ maxWait: 20_000, timeout: 60_000 },
+		);
 
 		await publishDashboardRefresh([
 			REALTIME_EVENTS.adminChanged,
