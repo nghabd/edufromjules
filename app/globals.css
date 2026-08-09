@@ -1,0 +1,163 @@
+/* app/globals.css */
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+	--color-background: hsl(var(--background));
+	--color-foreground: hsl(var(--foreground));
+
+	--color-card: hsl(var(--card));
+	--color-card-foreground: hsl(var(--card-foreground));
+
+	--color-popover: hsl(var(--popover));
+	--color-popover-foreground: hsl(var(--popover-foreground));
+
+	--color-primary: hsl(var(--primary));
+	--color-primary-foreground: hsl(var(--primary-foreground));
+
+	--color-secondary: hsl(var(--secondary));
+	--color-secondary-foreground: hsl(var(--secondary-foreground));
+
+	--color-muted: hsl(var(--muted));
+	--color-muted-foreground: hsl(var(--muted-foreground));
+
+	--color-accent: hsl(var(--accent));
+	--color-accent-foreground: hsl(var(--accent-foreground));
+
+	--color-destructive: hsl(var(--destructive));
+	--color-destructive-foreground: hsl(var(--destructive-foreground));
+
+	--color-border: hsl(var(--border));
+	--color-input: hsl(var(--input));
+	--color-ring: hsl(var(--ring));
+
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+}
+
+@layer base {
+	:root {
+		--background: 0 0% 100%;
+		--foreground: 222.2 84% 4.9%;
+		--card: 0 0% 100%;
+		--card-foreground: 222.2 84% 4.9%;
+		--popover: 0 0% 100%;
+		--popover-foreground: 222.2 84% 4.9%;
+		--primary: 221.2 83.2% 53.3%;
+		--primary-foreground: 210 40% 98%;
+		--secondary: 210 40% 96.1%;
+		--secondary-foreground: 222.2 47.4% 11.2%;
+		--muted: 210 40% 96.1%;
+		--muted-foreground: 215.4 16.3% 46.9%;
+		--accent: 210 40% 96.1%;
+		--accent-foreground: 222.2 47.4% 11.2%;
+		--destructive: 0 84.2% 60.2%;
+		--destructive-foreground: 210 40% 98%;
+		--border: 214.3 31.8% 91.4%;
+		--input: 214.3 31.8% 91.4%;
+		--ring: 221.2 83.2% 53.3%;
+		--radius: 0.5rem;
+	}
+
+	.dark {
+		--background: 222.2 84% 4.9%;
+		--foreground: 210 40% 98%;
+		--card: 222.2 84% 4.9%;
+		--card-foreground: 210 40% 98%;
+		--popover: 222.2 84% 4.9%;
+		--popover-foreground: 210 40% 98%;
+		--primary: 217.2 91.2% 59.8%;
+		--primary-foreground: 222.2 47.4% 11.2%;
+		--secondary: 217.2 32.6% 17.5%;
+		--secondary-foreground: 210 40% 98%;
+		--muted: 217.2 32.6% 17.5%;
+		--muted-foreground: 215 20.2% 65.1%;
+		--accent: 217.2 32.6% 17.5%;
+		--accent-foreground: 210 40% 98%;
+		--destructive: 0 62.8% 30.6%;
+		--destructive-foreground: 210 40% 98%;
+		--border: 217.2 32.6% 17.5%;
+		--input: 217.2 32.6% 17.5%;
+		--ring: 224.3 76.3% 48%;
+	}
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+}
+
+.edustation-live-logo {
+	isolation: isolate;
+	box-shadow:
+		0 8px 22px rgb(37 99 235 / 0.14),
+		0 1px 3px rgb(15 23 42 / 0.14);
+	transform: translateZ(0);
+	animation: edustation-live-logo-float 4.8s ease-in-out infinite;
+}
+
+.edustation-live-logo img {
+	animation: edustation-live-logo-breathe 3.2s ease-in-out infinite;
+}
+
+.edustation-live-logo-glow {
+	pointer-events: none;
+	position: absolute;
+	inset: -45%;
+	background:
+		radial-gradient(circle at 35% 28%, rgb(255 255 255 / 0.55), transparent 18%),
+		linear-gradient(
+			115deg,
+			transparent 35%,
+			rgb(255 255 255 / 0.42) 48%,
+			transparent 60%
+		);
+	mix-blend-mode: screen;
+	opacity: 0.72;
+	transform: translateX(-48%) rotate(12deg);
+	animation: edustation-live-logo-shine 3.6s ease-in-out infinite;
+}
+
+@keyframes edustation-live-logo-float {
+	0%,
+	100% {
+		transform: translateY(0) rotate(0deg) scale(1);
+	}
+	42% {
+		transform: translateY(-1px) rotate(1.5deg) scale(1.025);
+	}
+	72% {
+		transform: translateY(0.5px) rotate(-1deg) scale(1.01);
+	}
+}
+
+@keyframes edustation-live-logo-breathe {
+	0%,
+	100% {
+		filter: saturate(1.02) brightness(1);
+	}
+	50% {
+		filter: saturate(1.12) brightness(1.04);
+	}
+}
+
+@keyframes edustation-live-logo-shine {
+	0% {
+		transform: translateX(-58%) rotate(12deg);
+		opacity: 0;
+	}
+	24%,
+	64% {
+		opacity: 0.78;
+	}
+	100% {
+		transform: translateX(58%) rotate(12deg);
+		opacity: 0;
+	}
+}

@@ -1,0 +1,459 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // Direct URL for migrations (bypass connection pooler)
+  // directUrl = env("DATABASE_DIRECT_URL")
+}
+
+model User {
+  id                       String    @id @default(cuid())
+  email                    String    @unique
+  password                 String?
+  name                     String?
+  role                     String    @default("PHARMACIST")
+  canApproveOnsiteTraining Boolean   @default(false)
+  emailVerified            DateTime?
+  image                    String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  // Self-relation for Supervisor/Pharmacists (This part was fine)
+  supervisorId String?
+  supervisor   User?   @relation("SupervisorPharmacists", fields: [supervisorId], references: [id], onDelete: SetNull)
+  pharmacists  User[]  @relation("SupervisorPharmacists")
+
+  // --- FIXED RELATIONSHIPS TO GROUP ---
+
+  // 1. Many-to-one: The group this user belongs to as a pharmacist
+  groupId String?
+  group   Group?  @relation("GroupMembership", fields: [groupId], references: [id], onDelete: SetNull)
+
+  // 2. One-to-many: The groups this user manages as a supervisor
+  managedGroups Group[] @relation("GroupSupervisor")
+
+  // ------------------------------------
+
+  profile             Profile?
+  progress            UserProgress[]
+  quizAttempts        QuizAttempt[]
+  notifications       Notification[]
+  certificates        Certificate[]
+  courseAssignments   CourseAssignment[]   @relation("AssignedCourses")
+  assignedCourses     CourseAssignment[]   @relation("AssignedBy")
+  accounts            Account[]
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  mediaEngagements    MaterialEngagement[]
+  mediaAccess         MediaAccess[]
+  sentMessages        Message[]            @relation("SentMessages")
+  receivedMessages    Message[]            @relation("ReceivedMessages")
+
+  @@index([email])
+  @@index([role])
+  @@index([supervisorId])
+  @@index([groupId])
+  @@index([createdAt])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expires])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@index([expires])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Profile {
+  id                String  @id @default(cuid())
+  userId            String  @unique
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneNumber       String?
+  licenseNumber     String?
+  specialization    String?
+  yearsOfExperience Int?
+  pharmacyName      String?
+  address           String?
+  bio               String?
+}
+
+model Group {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  // Points to managedGroups in User
+  supervisorId String
+  supervisor   User   @relation("GroupSupervisor", fields: [supervisorId], references: [id], onDelete: Cascade)
+
+  // Points to group in User
+  pharmacists User[] @relation("GroupMembership")
+
+  courses   Course[]
+  createdAt DateTime @default(now())
+
+  @@index([supervisorId])
+  @@index([createdAt])
+}
+
+model Course {
+  id          String             @id @default(cuid())
+  title       String
+  description String
+  thumbnail   String?
+  category    String
+  topics      Topic[]
+  groups      Group[]
+  assignments CourseAssignment[]
+  quizzes     Quiz[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([category])
+  @@index([createdAt])
+}
+
+model CourseAssignment {
+  id           String    @id @default(cuid())
+  courseId     String
+  course       Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  pharmacistId String
+  pharmacist   User      @relation("AssignedCourses", fields: [pharmacistId], references: [id], onDelete: Cascade)
+  assignedById String
+  assignedBy   User      @relation("AssignedBy", fields: [assignedById], references: [id], onDelete: Cascade)
+  dueDate      DateTime?
+  status       String    @default("ASSIGNED")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([courseId, pharmacistId])
+  @@index([pharmacistId])
+  @@index([assignedById])
+  @@index([status])
+  @@index([dueDate])
+  @@index([createdAt])
+}
+
+model Topic {
+  id           String     @id @default(cuid())
+  title        String
+  description  String
+  order        Int
+  courseId     String
+  course       Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  materials    Material[]
+  requiredQuiz Quiz?
+  duration     Int        @default(0)
+  isMandatory  Boolean    @default(true)
+
+  @@index([courseId])
+  @@index([order])
+}
+
+model Material {
+  id              String               @id @default(cuid())
+  type            String
+  title           String
+  url             String
+  storageProvider String               @default("CLOUDFLARE")
+  storagePath     String?
+  gateQuestion    String?
+  gateAnswer      String?
+  duration        Int?
+  order           Int
+  topicId         String
+  topic           Topic                @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  progress        UserProgress[]
+  engagements     MaterialEngagement[]
+  isPublished     Boolean              @default(true)
+  content         String?              @db.Text // Used for RICH_TEXT type materials
+
+  // Media metadata
+  mediaMetadata MediaMetadata?
+  mediaVersions MediaVersion[]
+  fileSize      Int?
+  contentType   String?
+  storageKey    String?
+  uploadedAt    DateTime?
+  updatedAt     DateTime       @updatedAt
+
+  @@index([topicId])
+  @@index([type])
+  @@index([isPublished])
+  @@index([order])
+}
+
+model MediaMetadata {
+  id         String   @id @default(cuid())
+  materialId String   @unique
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  // Common metadata
+  fileSize    Int
+  contentType String
+  storageKey  String
+  uploadedAt  DateTime @default(now())
+
+  // Image metadata
+  width      Int?
+  height     Int?
+  colorSpace String?
+  hasAlpha   Boolean?
+  format     String?
+
+  // Video metadata
+  duration   Int? // in seconds
+  frameRate  Float?
+  bitrate    Int?
+  videoCodec String?
+  audioCodec String?
+
+  // PDF metadata
+  pages     Int?
+  encrypted Boolean @default(false)
+  author    String?
+  creator   String?
+  subject   String?
+  keywords  String?
+
+  // General metadata
+  title       String?
+  description String?
+  tags        String? // comma-separated
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([materialId])
+  @@index([contentType])
+  @@index([uploadedAt])
+}
+
+model MediaVersion {
+  id         String   @id @default(cuid())
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  version     Int    @default(1)
+  storageKey  String
+  fileSize    Int
+  contentType String
+
+  uploadedBy String // User ID
+  uploadedAt DateTime @default(now())
+  notes      String? // Version notes
+
+  @@index([materialId])
+  @@index([version])
+  @@index([uploadedAt])
+}
+
+model MediaAccess {
+  id         String @id @default(cuid())
+  materialId String
+  // Note: Consider adding relation to Material if needed for analytics
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accessType       String  @default("VIEW") // VIEW, DOWNLOAD, STREAM
+  duration         Int? // Time spent in seconds
+  bytesTransferred Int?
+  ipAddress        String?
+  userAgent        String?
+
+  accessedAt  DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([userId])
+  @@index([materialId])
+  @@index([accessType])
+  @@index([accessedAt])
+}
+
+model Quiz {
+  id           String        @id @default(cuid())
+  title        String
+  description  String?
+  passingScore Int           @default(70)
+  timeLimit    Int           @default(15)
+  maxAttempts  Int           @default(3)
+  scope        String        @default("LESSON")
+  topicId      String?       @unique
+  topic        Topic?        @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  courseId     String?
+  course       Course?       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions    Question[]
+  attempts     QuizAttempt[]
+  isPublished  Boolean       @default(true)
+
+  @@index([courseId])
+  @@index([topicId])
+  @@index([isPublished])
+}
+
+model Question {
+  id            String  @id @default(cuid())
+  question      String
+  options       String
+  correctAnswer String
+  explanation   String?
+  type          String  @default("RADIO")
+  points        Int     @default(1)
+  quizId        String
+  quiz          Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  order         Int
+
+  @@index([quizId])
+  @@index([order])
+}
+
+model MaterialEngagement {
+  id                 String    @id @default(cuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialId         String
+  material           Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  firstGateCompleted Boolean   @default(false)
+  controlsUnlocked   Boolean   @default(false)
+  closeAllowedAt     DateTime?
+  promptPassedAt     DateTime?
+  lastOpenedAt       DateTime  @default(now())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([userId, materialId])
+  @@index([userId])
+  @@index([materialId])
+  @@index([lastOpenedAt])
+}
+
+model UserProgress {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialId       String
+  material         Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  completed        Boolean   @default(false)
+  completionStatus String    @default("PENDING")
+  progress         Float     @default(0)
+  timeSpent        Int       @default(0)
+  lastAccessed     DateTime  @default(now())
+  approvedBy       String?
+  approvedAt       DateTime?
+
+  @@unique([userId, materialId])
+  @@index([userId])
+  @@index([materialId])
+  @@index([completed])
+  @@index([completionStatus])
+  @@index([lastAccessed])
+}
+
+model QuizAttempt {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId        String
+  quiz          Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  score         Float
+  passed        Boolean
+  answers       String
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  attemptNumber Int
+
+  @@index([userId])
+  @@index([quizId])
+  @@index([passed])
+  @@index([startedAt])
+}
+
+model Certificate {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId       String
+  courseName     String
+  issueDate      DateTime  @default(now())
+  expiryDate     DateTime?
+  certificateUrl String?
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User      @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
+  body        String    @db.Text
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([createdAt])
+  @@index([readAt])
+}
