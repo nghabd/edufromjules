@@ -190,7 +190,8 @@ export async function PATCH(req: Request, context: RouteContext) {
   }
 
   if (action === "prompt") {
-    const correct = answer === expected;
+    // No gate question configured → the gate is not obligatory; auto-pass.
+    const correct = !material.gateQuestion?.trim() || answer === expected;
     const engagement = await prisma.materialEngagement.update({
       where: { userId_materialId: { userId: session.user.id, materialId } },
       data: correct

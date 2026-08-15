@@ -309,7 +309,7 @@ export function LessonEditor({
 											<div className="grid gap-2 md:grid-cols-2">
 												<Input
 													value={material.gateQuestion || ""}
-													placeholder="Timer question shown before closing"
+													placeholder="Optional: question shown before closing (blank = no gate)"
 													onChange={(event) =>
 														updateMaterial(materialIndex, {
 															gateQuestion: event.target.value,
@@ -318,7 +318,7 @@ export function LessonEditor({
 												/>
 												<Input
 													value={material.gateAnswer || ""}
-													placeholder="Expected answer"
+													placeholder="Expected answer (only if question set)"
 													onChange={(event) =>
 														updateMaterial(materialIndex, {
 															gateAnswer: event.target.value,

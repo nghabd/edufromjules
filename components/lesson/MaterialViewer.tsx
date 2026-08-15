@@ -5,8 +5,7 @@ import DOMPurify from "isomorphic-dompurify";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
-	ChevronLeft,
-	ChevronRight,
+	Fullscreen,
 	Lock,
 	Play,
 	Volume2,
@@ -20,6 +19,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { PdfViewer } from "@/components/lesson/PdfViewer";
 import {
 	decodeRichTextMaterialContent,
 	isRichTextMaterialContent,
@@ -44,8 +44,6 @@ type Engagement = {
 };
 
 const timedMediaTypes = new Set(["PDF", "VIDEO", "IMAGE"]);
-const defaultGateQuestion =
-	"Before leaving: type learned to confirm you completed this lesson.";
 
 function getMaterialErrorMessage(error: unknown) {
 	if (!axios.isAxiosError(error)) {
@@ -82,6 +80,16 @@ export function MaterialViewer({
 	onComplete: () => void;
 }) {
 	const videoRef = useRef<HTMLVideoElement | null>(null);
+	const videoContainerRef = useRef<HTMLDivElement | null>(null);
+
+	const enterFullscreen = () => {
+		const container = videoContainerRef.current;
+		if (!container) return Promise.resolve();
+		if (container.requestFullscreen) {
+			return container.requestFullscreen().catch(() => {});
+		}
+		return Promise.resolve();
+	};
 	const [engagement, setEngagement] = useState<Engagement | null>(null);
 	const [materialOpenedAt, setMaterialOpenedAt] = useState<Date | null>(null);
 	const [now, setNow] = useState(0);
@@ -127,10 +135,7 @@ export function MaterialViewer({
 				});
 				setResolvedGateQuestion({
 					materialId: material.id,
-					question:
-						response.data.material?.gateQuestion ||
-						material.gateQuestion ||
-						defaultGateQuestion,
+					question: response.data.material?.gateQuestion || material.gateQuestion || "",
 				});
 				onOpened?.(material.id);
 			})
@@ -189,7 +194,7 @@ export function MaterialViewer({
 	const gateQuestion =
 		resolvedGateQuestion && resolvedGateQuestion.materialId === material?.id
 			? resolvedGateQuestion.question
-			: material?.gateQuestion || defaultGateQuestion;
+			: material?.gateQuestion || "";
 	const isFirstTimeVideoGate =
 		material?.type === "VIDEO" &&
 		requiresTimedGate &&
@@ -232,12 +237,14 @@ export function MaterialViewer({
 			try {
 				await video.play();
 				setVideoNeedsStart(false);
+				void enterFullscreen();
 			} catch {
 				try {
 					video.muted = true;
 					setVideoMuted(true);
 					await video.play();
 					setVideoNeedsStart(false);
+					void enterFullscreen();
 				} catch {
 					setVideoNeedsStart(true);
 				}
@@ -263,9 +270,18 @@ export function MaterialViewer({
 		try {
 			await video.play();
 			setVideoNeedsStart(false);
+			void enterFullscreen();
 		} catch {
 			toast.error("Could not start the video. Please try again.");
 		}
+	};
+
+	const toggleVideoFullscreen = () => {
+		if (document.fullscreenElement) {
+			void document.exitFullscreen().catch(() => {});
+			return;
+		}
+		void enterFullscreen();
 	};
 
 	const updateVideoVolume = (value: number) => {
@@ -288,11 +304,6 @@ export function MaterialViewer({
 			updateVideoVolume(0.5);
 		}
 	};
-
-	const pdfUrl = useMemo(() => {
-		if (!material) return "";
-		return `${materialUrl}#toolbar=0&navpanes=0&scrollbar=0&page=${page}`;
-	}, [material, materialUrl, page]);
 
 	const richTextHtml = useMemo(() => {
 		if (!material) return "";
@@ -346,8 +357,7 @@ export function MaterialViewer({
 		}
 
 		if (!engagement.firstGateCompleted) {
-			const answer =
-				window.prompt(gateQuestion) ?? "";
+			const answer = gateQuestion ? window.prompt(gateQuestion) ?? "" : "";
 
 			let response;
 			try {
@@ -373,22 +383,21 @@ export function MaterialViewer({
 			}
 
 			toast.success("Lesson completed.");
-
-			// Track time spent on material
-			if (materialOpenedAt) {
-				const timeSpentSeconds = Math.round(
-					(Date.now() - materialOpenedAt.getTime()) / 1000,
-				);
-				axios
-					.patch(`/api/materials/${material.id}/progress`, {
-						timeSpent: timeSpentSeconds,
-					})
-					.catch((err) => console.error("[TIME_TRACKING_FAILED]", err));
-			}
-
-			onComplete();
 		}
 
+		// Track time spent on material
+		if (materialOpenedAt) {
+			const timeSpentSeconds = Math.round(
+				(Date.now() - materialOpenedAt.getTime()) / 1000,
+			);
+			axios
+				.patch(`/api/materials/${material.id}/progress`, {
+					timeSpent: timeSpentSeconds,
+				})
+				.catch((err) => console.error("[TIME_TRACKING_FAILED]", err));
+		}
+
+		onComplete();
 		onClose();
 	};
 
@@ -431,7 +440,7 @@ export function MaterialViewer({
 						<Button onClick={onClose}>Close</Button>
 					</div>
 				) : material?.type === "VIDEO" ? (
-					<div className="relative h-[74vh] bg-black">
+					<div ref={videoContainerRef} className="relative h-[74vh] bg-black">
 						<video
 							ref={videoRef}
 							key={`${material.id}-${previewVersion}`}
@@ -490,6 +499,15 @@ export function MaterialViewer({
 											updateVideoVolume(Number(event.target.value))
 										}
 									/>
+									<Button
+										type="button"
+										variant="ghost"
+										className="h-9 w-9 p-0 text-white hover:bg-white/10 hover:text-white"
+										onClick={toggleVideoFullscreen}
+										aria-label="Toggle fullscreen"
+									>
+										<Fullscreen className="h-4 w-4" />
+									</Button>
 								</div>
 							</div>
 						)}
@@ -523,36 +541,13 @@ export function MaterialViewer({
 						/>
 					</div>
 				) : material ? (
-					<div className="grid h-[74vh] grid-rows-[1fr_auto] bg-slate-950">
-						<iframe
-							key={`${pdfUrl}-${previewVersion}`}
-							title={material.title}
-							src={pdfUrl}
-							className="h-full w-full bg-white"
-						/>
-						<div className="flex items-center justify-center gap-3 border-t border-slate-800 bg-slate-950 p-3">
-							<Button
-								variant="outline"
-								onClick={() => setPage((value) => Math.max(1, value - 1))}
-								disabled={page === 1 || hideControls}
-							>
-								<ChevronLeft className="mr-2 h-4 w-4" />
-								Previous
-							</Button>
-							<span className="text-sm font-medium text-white">
-								Page {page}
-								{hideControls ? " · Navigation locked" : ""}
-							</span>
-							<Button
-								variant="outline"
-								onClick={() => setPage((value) => value + 1)}
-								disabled={hideControls}
-							>
-								Next
-								<ChevronRight className="ml-2 h-4 w-4" />
-							</Button>
-						</div>
-					</div>
+					<PdfViewer
+						url={materialUrl}
+						page={page}
+						onPageChange={setPage}
+						disabled={hideControls}
+						className="h-[74vh]"
+					/>
 				) : null}
 			</DialogContent>
 		</Dialog>

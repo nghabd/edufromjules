@@ -45,7 +45,9 @@ export function CourseCard({
 				className={cn(
 					"grid gap-3 p-4 lg:grid-cols-[1fr_auto] lg:items-center",
 					hasBody && "border-b border-border",
+					hasBody && "cursor-pointer",
 				)}
+				onClick={hasBody ? onToggle : undefined}
 			>
 				<div className="min-w-0">
 					<div className="flex flex-wrap items-center gap-2">
@@ -87,7 +89,7 @@ export function CourseCard({
 						</div>
 					)}
 				</div>
-				<div className="flex shrink-0 items-center gap-2">
+				<div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
 					{actions.map((action) => (
 						<Button
 							key={action.label}

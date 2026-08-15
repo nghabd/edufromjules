@@ -32,6 +32,7 @@ import { REALTIME_EVENTS } from "@/lib/realtime-events";
 
 const pharmacistRealtimeEvents = [
 	REALTIME_EVENTS.pharmacistChanged,
+	REALTIME_EVENTS.courseChanged,
 	REALTIME_EVENTS.assignmentChanged,
 	REALTIME_EVENTS.progressChanged,
 	REALTIME_EVENTS.practicalApproved,

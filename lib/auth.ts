@@ -10,6 +10,17 @@ import { validateEmail } from "@/lib/validation";
 const useSecureCookies = process.env.NODE_ENV === "production";
 const cookiePrefix = useSecureCookies ? "__Secure-" : "";
 
+const SESSION_MAX_AGE_SECONDS = (() => {
+	const parsed = Number.parseInt(process.env.NEXTAUTH_SESSION_MAX_AGE_SECONDS ?? "", 10);
+	if (Number.isInteger(parsed) && parsed > 0) return parsed;
+	return 7 * 24 * 60 * 60; // 7 days default
+})();
+
+const SESSION_UPDATE_AGE_SECONDS = Math.min(
+	24 * 60 * 60,
+	Math.max(60, Math.floor(SESSION_MAX_AGE_SECONDS / 7)),
+);
+
 type AuthUser = {
 	id: string;
 	email: string;
@@ -102,8 +113,8 @@ export const authOptions: NextAuthOptions = {
 	],
 	session: {
 		strategy: "jwt",
-		maxAge: 7 * 24 * 60 * 60, // 7 days
-		updateAge: 24 * 60 * 60, // Update every 24 hours
+		maxAge: SESSION_MAX_AGE_SECONDS,
+		updateAge: SESSION_UPDATE_AGE_SECONDS,
 	},
 	callbacks: {
 		async signIn({ user, account }) {
@@ -191,7 +202,7 @@ export const authOptions: NextAuthOptions = {
 	// SECURITY: Ensure secret is set
 	secret: process.env.NEXTAUTH_SECRET,
 	jwt: {
-		maxAge: 7 * 24 * 60 * 60, // 7 days
+		maxAge: SESSION_MAX_AGE_SECONDS,
 	},
 	cookies: {
 		sessionToken: {

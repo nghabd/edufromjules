@@ -653,7 +653,10 @@ function PharmacistRow({
 }) {
 	return (
 		<div className="p-4">
-			<div className="flex items-start justify-between gap-3">
+			<div
+				className="flex cursor-pointer items-start justify-between gap-3"
+				onClick={onToggle}
+			>
 				<div className="min-w-0">
 					<p className="truncate text-sm font-semibold">
 						{trainee.name || "Unnamed Pharmacist"}
@@ -662,7 +665,7 @@ function PharmacistRow({
 						{trainee.email}
 					</p>
 				</div>
-				<div className="flex gap-2">
+				<div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
 					<Button type="button" size="sm" variant="outline" onClick={onToggle}>
 						{isExpanded ? (
 							<ChevronUp className="h-4 w-4" />
@@ -802,7 +805,8 @@ function SectionCard({
 		<Card className="overflow-hidden border-border bg-card shadow-sm">
 			<div
 				id={id}
-				className="scroll-mt-24 flex items-center justify-between gap-3 border-b border-border p-4"
+				className="scroll-mt-24 flex cursor-pointer items-center justify-between gap-3 border-b border-border p-4"
+				onClick={onToggle}
 			>
 				<div className="flex items-center gap-2">
 					{icon}
@@ -813,7 +817,7 @@ function SectionCard({
 						)}
 					</div>
 				</div>
-				<div className="flex shrink-0 items-center gap-2">
+				<div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
 					{action}
 					<Button
 						type="button"

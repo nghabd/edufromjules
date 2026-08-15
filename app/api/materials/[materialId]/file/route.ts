@@ -16,7 +16,7 @@ type RouteContext = {
 	params: Promise<{ materialId: string }>;
 };
 
-export async function GET(_req: Request, context: RouteContext) {
+export async function GET(req: Request, context: RouteContext) {
 	try {
 		const { error, session } = await requireRole([
 			"ADMIN",
@@ -26,6 +26,7 @@ export async function GET(_req: Request, context: RouteContext) {
 		if (error) return error;
 
 		const { materialId } = await context.params;
+		const inline = new URL(req.url).searchParams.get("inline") === "1";
 
 		if (!materialId || !/^[a-z0-9]{24,}$/.test(materialId)) {
 			logger.warn("[FILE_INVALID_ID]", { materialId, userId: session.user.id });
@@ -89,7 +90,7 @@ export async function GET(_req: Request, context: RouteContext) {
 			provider: storageService.getProvider(),
 		});
 
-		if (!storageService.isLocalProvider()) {
+		if (!storageService.isLocalProvider() && !inline) {
 			const signedUrl = await storageService.generateSignedUrl(storageKey, 3600);
 			return NextResponse.redirect(signedUrl);
 		}
@@ -104,7 +105,8 @@ export async function GET(_req: Request, context: RouteContext) {
 				"Content-Length": String(fileBuffer.length),
 				"Cache-Control": "private, max-age=300",
 				"X-Content-Type-Options": "nosniff",
-				"X-Frame-Options": "DENY",
+				"X-Frame-Options": "SAMEORIGIN",
+				...(inline ? { "Access-Control-Allow-Origin": "*" } : {}),
 			},
 		});
 	} catch (error) {
