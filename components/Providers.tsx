@@ -37,7 +37,13 @@ function installAuthInterceptor() {
 	};
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+	children,
+	nonce,
+}: {
+	children: React.ReactNode;
+	nonce?: string;
+}) {
 	const [queryClient] = useState(
 		() =>
 			new QueryClient({
@@ -64,6 +70,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 				defaultTheme="system"
 				enableSystem
 				disableTransitionOnChange
+				nonce={nonce}
 			>
 				<QueryClientProvider client={queryClient}>
 					{children}

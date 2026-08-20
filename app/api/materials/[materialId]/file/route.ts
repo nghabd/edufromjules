@@ -110,9 +110,48 @@ export async function GET(req: Request, context: RouteContext) {
 			},
 		});
 	} catch (error) {
+		const err = error as Error & { code?: string; name?: string };
 		logger.error("[FILE_ERROR]", {
-			error: (error as Error).message,
+			error: err.message,
+			code: err.code,
+			name: err.name,
 		});
+
+		const message = err.message || "";
+		const isMissingFile =
+			err.code === "ENOENT" ||
+			err.name === "NoSuchKey" ||
+			err.name === "NotFound" ||
+			message.includes("NoSuchKey") ||
+			message.includes("ENOENT") ||
+			message.includes("not exist") ||
+			message.includes("not found");
+
+		if (isMissingFile) {
+			return NextResponse.json(
+				{ message: "File is not available. It may not have been uploaded." },
+				{ status: 404 },
+			);
+		}
+
+		if (
+			message.includes("not configured") ||
+			message.includes("appears invalid") ||
+			message.includes("access key") ||
+			message.includes("credentials") ||
+			message.includes("InvalidAccessKeyId") ||
+			message.includes("SignatureDoesNotMatch") ||
+			message.includes("AccessDenied")
+		) {
+			return NextResponse.json(
+				{
+					message:
+						"Storage is not configured correctly on this server. Check the storage provider environment variables.",
+				},
+				{ status: 500 },
+			);
+		}
+
 		return NextResponse.json(
 			{ message: "Internal server error" },
 			{ status: 500 },

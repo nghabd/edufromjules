@@ -35,7 +35,7 @@ export default async function RootLayout({
 	return (
 		<html lang="en" suppressHydrationWarning nonce={nonce}>
 			<body className={inter.className} suppressHydrationWarning nonce={nonce}>
-				<Providers>
+				<Providers nonce={nonce}>
 					<div className="flex min-h-screen flex-col bg-background text-foreground">
 						<Header />
 						<main className="flex-1">{children}</main>
