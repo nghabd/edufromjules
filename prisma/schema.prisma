@@ -435,6 +435,7 @@ model Notification {
   message   String
   type      String   @default("INFO")
   read      Boolean  @default(false)
+  actionUrl String?  // Deep-link to relevant page (course, assignment, etc.)
   createdAt DateTime @default(now())
 
   @@index([userId])
@@ -451,9 +452,11 @@ model Message {
   body        String    @db.Text
   readAt      DateTime?
   createdAt   DateTime  @default(now())
+  courseId    String?   // Link to course if message is about a course
 
   @@index([senderId])
   @@index([recipientId])
   @@index([createdAt])
   @@index([readAt])
+  @@index([courseId])
 }

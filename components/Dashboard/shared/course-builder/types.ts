@@ -48,6 +48,7 @@ export type MaterialDraft = {
 	duration?: number;
 	gateQuestion?: string;
 	gateAnswer?: string;
+	trainerId?: string;
 };
 
 export type TopicDraft = {

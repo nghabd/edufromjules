@@ -10,6 +10,7 @@ type NotificationInput = {
 	message: string;
 	type?: string;
 	email?: boolean;
+	actionUrl?: string;
 };
 
 type TransactionClient = Prisma.TransactionClient;
@@ -25,6 +26,7 @@ export async function createNotification(
 			title: input.title,
 			message: input.message,
 			type: input.type ?? "INFO",
+			actionUrl: input.actionUrl,
 		},
 	});
 

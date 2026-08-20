@@ -1,15 +1,25 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import DOMPurify from "isomorphic-dompurify";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
 	Fullscreen,
+	Loader2,
 	Lock,
+	Minimize2,
+	MousePointer2,
+	Pause,
 	Play,
+	RotateCw,
+	SkipBack,
+	SkipForward,
 	Volume2,
 	VolumeX,
+	X,
+	Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,11 +29,23 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { PdfViewer } from "@/components/lesson/PdfViewer";
 import {
 	decodeRichTextMaterialContent,
 	isRichTextMaterialContent,
 } from "@/lib/material-content";
+
+// Loaded client-only so react-pdf never evaluates on the server (DOMMatrix).
+const PdfViewer = dynamic(
+	() => import("@/components/lesson/PdfViewer").then((mod) => mod.PdfViewer),
+	{
+		ssr: false,
+		loading: () => (
+			<div className="flex h-full min-h-40 items-center justify-center text-slate-400">
+				Loading PDF viewer…
+			</div>
+		),
+	},
+);
 
 // IMPORTANT: This imports the CSS required to render your colors, lists, and formatting correctly
 import "react-quill-new/dist/quill.snow.css";
@@ -97,6 +119,16 @@ export function MaterialViewer({
 	const [videoVolume, setVideoVolume] = useState(0.85);
 	const [videoMuted, setVideoMuted] = useState(false);
 	const [videoNeedsStart, setVideoNeedsStart] = useState(false);
+	const [videoPlaybackRate, setVideoPlaybackRate] = useState(1);
+	const [videoShowControls, setVideoShowControls] = useState(true);
+	const [videoProgress, setVideoProgress] = useState(0);
+	const [videoBuffered, setVideoBuffered] = useState(0);
+	const [videoDuration, setVideoDuration] = useState(0);
+	const [videoCurrentTime, setVideoCurrentTime] = useState(0);
+	const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+	const [isPip, setIsPip] = useState(false);
+	const [videoQuality, setVideoQuality] = useState("auto");
+	const [videoLoading, setVideoLoading] = useState(false);
 	const [previewVersion, setPreviewVersion] = useState(0);
 	const [resolvedMaterialUrl, setResolvedMaterialUrl] = useState<{
 		materialId: string;
@@ -231,6 +263,11 @@ export function MaterialViewer({
 		video.playbackRate = 1;
 		video.defaultPlaybackRate = 1;
 
+		const handlePlay = () => setIsVideoPlaying(true);
+		const handlePause = () => setIsVideoPlaying(false);
+		video.addEventListener("play", handlePlay);
+		video.addEventListener("pause", handlePause);
+
 		if (!isFirstTimeVideoGate) return;
 
 		const playVideo = async () => {
@@ -252,6 +289,11 @@ export function MaterialViewer({
 		};
 
 		void playVideo();
+
+		return () => {
+			video.removeEventListener("play", handlePlay);
+			video.removeEventListener("pause", handlePause);
+		};
 	}, [
 		isFirstTimeVideoGate,
 		loadError,
@@ -304,6 +346,106 @@ export function MaterialViewer({
 			updateVideoVolume(0.5);
 		}
 	};
+
+	const setVideoRate = (rate: number) => {
+		setVideoPlaybackRate(rate);
+		const video = videoRef.current;
+		if (video) video.playbackRate = rate;
+	};
+
+	const toggleVideoPip = async () => {
+		const video = videoRef.current;
+		if (!video) return;
+		try {
+			if (document.pictureInPictureElement === video) {
+				await document.exitPictureInPicture();
+				setIsPip(false);
+			} else {
+				await video.requestPictureInPicture();
+				setIsPip(true);
+			}
+		} catch {
+			toast.error("Picture-in-Picture not available");
+		}
+	};
+
+	const handleVideoTimeUpdate = () => {
+		const video = videoRef.current;
+		if (!video) return;
+		setVideoProgress((video.currentTime / video.duration) * 100 || 0);
+		setVideoCurrentTime(video.currentTime);
+	};
+
+	const handleVideoLoadedMetadata = () => {
+		const video = videoRef.current;
+		if (!video) return;
+		setVideoDuration(video.duration);
+	};
+
+	const handleVideoProgress = () => {
+		const video = videoRef.current;
+		if (!video || !video.buffered.length) return;
+		const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+		setVideoBuffered((bufferedEnd / video.duration) * 100 || 0);
+	};
+
+	const handleVideoWaiting = () => setVideoLoading(true);
+	const handleVideoCanPlay = () => setVideoLoading(false);
+
+	const handleVideoKeyDown = (e: React.KeyboardEvent) => {
+		const video = videoRef.current;
+		if (!video) return;
+		switch (e.key) {
+			case " ":
+			case "k":
+				e.preventDefault();
+				video.paused ? video.play() : video.pause();
+				break;
+			case "ArrowLeft":
+				e.preventDefault();
+				video.currentTime = Math.max(0, video.currentTime - 10);
+				break;
+			case "ArrowRight":
+				e.preventDefault();
+				video.currentTime = Math.min(video.duration, video.currentTime + 10);
+				break;
+			case "ArrowUp":
+				e.preventDefault();
+				updateVideoVolume(Math.min(1, video.volume + 0.1));
+				break;
+			case "ArrowDown":
+				e.preventDefault();
+				updateVideoVolume(Math.max(0, video.volume - 0.1));
+				break;
+			case "f":
+				toggleVideoFullscreen();
+				break;
+			case "m":
+				toggleVideoMuted();
+				break;
+			case "p":
+				toggleVideoPip();
+				break;
+			case ">":
+			case ".":
+				e.shiftKey && setVideoRate(Math.min(2, video.playbackRate + 0.25));
+				break;
+			case "<":
+			case ",":
+				e.shiftKey && setVideoRate(Math.max(0.25, video.playbackRate - 0.25));
+				break;
+			case "0":
+				setVideoRate(1);
+				break;
+		}
+	};
+
+	function formatTime(seconds: number) {
+		if (!seconds || isNaN(seconds)) return "0:00";
+		const mins = Math.floor(seconds / 60);
+		const secs = Math.floor(seconds % 60);
+		return `${mins}:${secs.toString().padStart(2, "0")}`;
+	}
 
 	const richTextHtml = useMemo(() => {
 		if (!material) return "";
@@ -440,7 +582,14 @@ export function MaterialViewer({
 						<Button onClick={onClose}>Close</Button>
 					</div>
 				) : material?.type === "VIDEO" ? (
-					<div ref={videoContainerRef} className="relative h-[74vh] bg-black">
+					<div
+						ref={videoContainerRef}
+						className="relative h-[74vh] bg-black"
+						onMouseEnter={() => setVideoShowControls(true)}
+						onMouseLeave={() => setVideoShowControls(false)}
+						onKeyDown={handleVideoKeyDown}
+						tabIndex={0}
+					>
 						<video
 							ref={videoRef}
 							key={`${material.id}-${previewVersion}`}
@@ -448,19 +597,14 @@ export function MaterialViewer({
 							autoPlay={isFirstTimeVideoGate}
 							playsInline
 							preload="auto"
-							controls={showNativeVideoControls}
-							controlsList="nodownload noplaybackrate"
-							disablePictureInPicture
+							controls={false}
+							disablePictureInPicture={false}
 							onContextMenu={(event) => event.preventDefault()}
-							onLoadedMetadata={(event) => {
-								event.currentTarget.playbackRate = 1;
-								event.currentTarget.defaultPlaybackRate = 1;
-							}}
-							onRateChange={(event) => {
-								if (isFirstTimeVideoGate && event.currentTarget.playbackRate !== 1) {
-									event.currentTarget.playbackRate = 1;
-								}
-							}}
+							onLoadedMetadata={handleVideoLoadedMetadata}
+							onTimeUpdate={handleVideoTimeUpdate}
+							onProgress={handleVideoProgress}
+							onWaiting={handleVideoWaiting}
+							onCanPlay={handleVideoCanPlay}
 							onError={() => {
 								setLoadError(
 									"Could not play this video. Check the uploaded file format and try again.",
@@ -468,53 +612,187 @@ export function MaterialViewer({
 							}}
 							src={materialUrl}
 						/>
-						{isFirstTimeVideoGate && (
-							<div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-black/75 px-4 py-3 text-white">
-								<div className="flex min-w-0 items-center gap-2 text-xs font-medium">
-									<Lock className="h-4 w-4 shrink-0" />
-									<span className="truncate">First viewing locked at normal speed</span>
-								</div>
-								<div className="flex items-center gap-3">
-									<Button
-										type="button"
-										variant="ghost"
-										className="h-9 w-9 p-0 text-white hover:bg-white/10 hover:text-white"
-										onClick={toggleVideoMuted}
-									>
-										{videoMuted || videoVolume === 0 ? (
-											<VolumeX className="h-4 w-4" />
-										) : (
-											<Volume2 className="h-4 w-4" />
+						{videoLoading && (
+							<div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+								<Loader2 className="h-8 w-8 animate-spin text-white" />
+							</div>
+						)}
+
+						{videoShowControls && (
+							<div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/90 to-transparent pointer-events-auto">
+								<div className="flex items-center justify-between gap-4 mb-2">
+									<div className="flex items-center gap-3 flex-1 min-w-0">
+										{isFirstTimeVideoGate && (
+											<div className="flex items-center gap-2 text-xs font-medium text-white/80">
+												<Lock className="h-3.5 w-3.5 shrink-0" />
+												<span className="truncate">
+													First viewing locked at normal speed
+												</span>
+											</div>
 										)}
-									</Button>
+									</div>
+									<div className="flex items-center gap-2 flex-shrink-0">
+										<div className="relative group">
+											<select
+												value={videoPlaybackRate}
+												onChange={(e) => setVideoRate(Number(e.target.value))}
+												className="bg-black/50 text-white text-xs rounded px-2 py-1 border border-white/20 focus:outline-none focus:ring-1 focus:ring-primary"
+												disabled={isFirstTimeVideoGate}
+												title="Playback speed"
+											>
+												{[
+													0.25,
+													0.5,
+													0.75,
+													1,
+													1.25,
+													1.5,
+													1.75,
+													2,
+												].map((r) => (
+													<option key={r} value={r}>
+														{r}x
+													</option>
+												))}
+											</select>
+										</div>
+										<div className="relative group">
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												className="h-9 w-9 p-0 text-white hover:bg-white/10"
+												onClick={toggleVideoPip}
+												disabled={isPip || !document.pictureInPictureEnabled}
+												title="Picture-in-Picture (P)"
+											>
+												{isPip ? <Minimize2 className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
+											</Button>
+										</div>
+									</div>
+								</div>
+
+								<div className="relative h-2 mb-2">
+									<div
+										className="absolute inset-0 h-full bg-white/20 rounded-full overflow-hidden"
+										style={{ width: `${videoBuffered}%` }}
+									/>
+									<div
+										className="absolute inset-0 h-full bg-primary rounded-full transition-all duration-75"
+										style={{ width: `${videoProgress}%` }}
+									/>
 									<input
 										type="range"
 										min="0"
-										max="1"
-										step="0.05"
-										value={videoMuted ? 0 : videoVolume}
-										aria-label="Video volume"
-										className="w-28 accent-white"
-										onChange={(event) =>
-											updateVideoVolume(Number(event.target.value))
-										}
+										max="100"
+										value={videoProgress}
+										onChange={(e) => {
+											const video = videoRef.current;
+											if (video) video.currentTime = (Number(e.target.value) / 100) * video.duration;
+										}}
+										className="absolute inset-0 h-full appearance-none bg-transparent cursor-pointer focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-black"
+										aria-label="Seek"
 									/>
-									<Button
-										type="button"
-										variant="ghost"
-										className="h-9 w-9 p-0 text-white hover:bg-white/10 hover:text-white"
-										onClick={toggleVideoFullscreen}
-										aria-label="Toggle fullscreen"
-									>
-										<Fullscreen className="h-4 w-4" />
-									</Button>
+								</div>
+
+								<div className="flex items-center justify-between gap-3">
+									<div className="flex items-center gap-3 flex-1 min-w-0">
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											className="h-9 w-9 p-0 text-white hover:bg-white/10"
+											onClick={() => {
+												const video = videoRef.current;
+												if (video) video.currentTime = Math.max(0, video.currentTime - 10);
+											}}
+											aria-label="Rewind 10s"
+										>
+											<SkipBack className="h-4 w-4" />
+										</Button>
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											className="h-9 w-9 p-0 text-white hover:bg-white/10"
+											onClick={() => {
+												const video = videoRef.current;
+												if (video) {
+													if (video.paused) {
+														video.play();
+														setIsVideoPlaying(true);
+													} else {
+														video.pause();
+														setIsVideoPlaying(false);
+													}
+												}
+											}}
+											aria-label="Play/Pause (Space/K)"
+										>
+											{isVideoPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+										</Button>
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											className="h-9 w-9 p-0 text-white hover:bg-white/10"
+											onClick={() => {
+												const video = videoRef.current;
+												if (video) video.currentTime = Math.min(video.duration, video.currentTime + 10);
+											}}
+											aria-label="Forward 10s"
+										>
+											<SkipForward className="h-4 w-4" />
+										</Button>
+
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											className="h-9 w-9 p-0 text-white hover:bg-white/10"
+											onClick={toggleVideoMuted}
+											title="Mute (M)"
+										>
+											{videoMuted || videoVolume === 0 ? (
+												<VolumeX className="h-4 w-4" />
+											) : (
+												<Volume2 className="h-4 w-4" />
+											)}
+										</Button>
+										<input
+											type="range"
+											min="0"
+											max="1"
+											step="0.05"
+											value={videoMuted ? 0 : videoVolume}
+											aria-label="Video volume"
+											className="w-24 accent-white"
+											onChange={(event) =>
+												updateVideoVolume(Number(event.target.value))
+											}
+										/>
+									</div>
+									<div className="flex items-center gap-2 flex-shrink-0">
+										<span className="text-xs font-mono text-white/70 tabular-nums">
+											{formatTime(videoDuration)} / {formatTime(videoCurrentTime)}
+										</span>
+										<button
+											type="button"
+											className="h-9 w-9 p-0 text-white hover:bg-white/10"
+											onClick={toggleVideoFullscreen}
+											aria-label="Toggle fullscreen"
+											title="Fullscreen (F)"
+										>
+											{document.fullscreenElement ? <Minimize2 className="h-4 w-4" /> : <Fullscreen className="h-4 w-4" />}
+										</button>
+									</div>
 								</div>
 							</div>
 						)}
 						{isFirstTimeVideoGate && videoNeedsStart && (
 							<div className="absolute inset-0 flex items-center justify-center bg-black/40">
-								<Button type="button" onClick={startVideo}>
-									<Play className="mr-2 h-4 w-4" />
+								<Button type="button" onClick={startVideo} size="lg" className="bg-primary hover:bg-primary/90">
+									<Play className="mr-2 h-5 w-5" />
 									Start Video
 								</Button>
 							</div>

@@ -15,6 +15,14 @@ export const metadata: Metadata = {
 	},
 	description: "Secure pharmacy training for a small team with courses, quizzes, and role-based access.",
 	applicationName: "edustation",
+	icons: {
+		icon: [
+			{ url: "/brand/edustation-gemini-logo.png", sizes: "any", type: "image/png" },
+			{ url: "/brand/edustation-gemini-logo.webp", sizes: "any", type: "image/webp" },
+		],
+		shortcut: "/brand/edustation-gemini-logo.png",
+		apple: "/brand/edustation-gemini-logo.png",
+	},
 };
 
 export default async function RootLayout({

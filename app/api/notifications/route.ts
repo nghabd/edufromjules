@@ -12,6 +12,15 @@ export async function GET() {
 			where: { userId: session.user.id },
 			orderBy: { createdAt: "desc" },
 			take: 50,
+			select: {
+				id: true,
+				title: true,
+				message: true,
+				type: true,
+				read: true,
+				createdAt: true,
+				actionUrl: true,
+			},
 		});
 
 		const unreadCount = notifications.filter((n) => !n.read).length;

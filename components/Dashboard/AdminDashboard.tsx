@@ -19,6 +19,7 @@ import {
 import { useRealtimeQueryInvalidation } from "@/components/realtime/useRealtimeQueryInvalidation";
 import { REALTIME_EVENTS } from "@/lib/realtime-events";
 import { AdminAnalytics } from "@/components/analytics/AdminAnalytics";
+import { SkeletonCard, Skeleton } from "@/components/ui/Skeleton";
 
 const adminRealtimeEvents = [
 	REALTIME_EVENTS.adminChanged,
@@ -92,28 +93,52 @@ export function AdminDashboard() {
 		},
 	});
 
+// Derive data before early return to satisfy hooks rules
 	const filteredUsers = useMemo(
 		() =>
 			data?.users?.filter(
 				(u) =>
 					u.name?.toLowerCase().includes(searchUsers.toLowerCase()) ||
-					u.email.toLowerCase().includes(searchUsers.toLowerCase()),
-			) || [],
-		[data, searchUsers],
+					u.email?.toLowerCase().includes(searchUsers.toLowerCase()),
+			) ?? [],
+		[data?.users, searchUsers],
 	);
 	const filteredCourses = useMemo(
 		() =>
-			data?.courses?.filter((c) =>
-				c.title.toLowerCase().includes(searchCourses.toLowerCase()),
-			) || [],
-		[data, searchCourses],
+			data?.courses?.filter(
+				(c) =>
+					c.title.toLowerCase().includes(searchCourses.toLowerCase()) ||
+					c.category?.toLowerCase().includes(searchCourses.toLowerCase()),
+			) ?? [],
+		[data?.courses, searchCourses],
 	);
-
-	// Extract supervisors from the user list to pass to the modal
 	const supervisorsList = useMemo(
 		() => data?.users?.filter((u) => u.role === "SUPERVISOR") || [],
 		[data],
 	);
+
+	if (isLoading) {
+		return (
+			<div className="mx-auto max-w-7xl px-4 py-8">
+				<div className="space-y-6">
+					<div className="space-y-2">
+						<Skeleton className="h-8 w-64 rounded" />
+						<Skeleton className="h-4 w-80 rounded" />
+					</div>
+					<div className="grid gap-4 md:grid-cols-4">
+						{Array.from({ length: 4 }).map((_, i) => (
+							<SkeletonCard key={i} />
+						))}
+					</div>
+					<div className="grid gap-3">
+						{Array.from({ length: 3 }).map((_, i) => (
+							<div key={i} className="h-48 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+						))}
+					</div>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="min-h-screen bg-background p-8">

@@ -6,6 +6,7 @@ import { enforceTrustedOrigin } from "@/lib/request-security";
 import { adminCreateUserSchema } from "@/lib/schemas";
 import { publishDashboardRefresh } from "@/lib/realtime-server";
 import { REALTIME_EVENTS } from "@/lib/realtime-events";
+import { createNotification } from "@/lib/notifications";
 
 export async function POST(req: Request) {
 	try {
@@ -36,33 +37,50 @@ export async function POST(req: Request) {
 		if (role === "PHARMACIST" && supervisorId) {
 			const supervisor = await prisma.user.findFirst({
 				where: { id: supervisorId, role: "SUPERVISOR" },
-				select: { id: true },
+				select: { id: true, name: true, email: true },
 			});
 			if (!supervisor) return badRequest("Selected supervisor was not found.");
 		}
 
 		const hashedPassword = await bcrypt.hash(password, 12);
 
-		const newUser = await prisma.user.create({
-			data: {
-				name: name || null,
-				email,
-				password: hashedPassword,
-				role,
-				canApproveOnsiteTraining:
-					role === "PHARMACIST" ? canApproveOnsiteTraining : false,
-				// Only assign a supervisor if the role is Pharmacist
-				supervisorId: role === "PHARMACIST" ? supervisorId || null : null,
-			},
-			select: {
-				id: true,
-				name: true,
-				email: true,
-				role: true,
-				canApproveOnsiteTraining: true,
-				supervisorId: true,
-				createdAt: true,
-			},
+		const newUser = await prisma.$transaction(async (tx) => {
+			const user = await tx.user.create({
+				data: {
+					name: name || null,
+					email,
+					password: hashedPassword,
+					role,
+					canApproveOnsiteTraining:
+						role === "PHARMACIST" ? canApproveOnsiteTraining : false,
+					supervisorId: role === "PHARMACIST" ? supervisorId || null : null,
+				},
+				select: {
+					id: true,
+					name: true,
+					email: true,
+					role: true,
+					canApproveOnsiteTraining: true,
+					supervisorId: true,
+					createdAt: true,
+				},
+			});
+
+			// Notify supervisor when a pharmacist is assigned to them
+			if (role === "PHARMACIST" && supervisorId) {
+				await createNotification(
+					{
+						userId: supervisorId,
+						title: "New Pharmacist Assigned",
+						message: `${name || email} has been added to your team.`,
+						type: "INFO",
+						actionUrl: `/supervisor?tab=team&pharmacistId=${user.id}`,
+					},
+					tx,
+				);
+			}
+
+			return user;
 		});
 
 		await publishDashboardRefresh([

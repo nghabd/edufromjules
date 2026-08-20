@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { createHash, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, serverError } from "@/lib/api-auth";
@@ -10,6 +11,18 @@ import {
 	validateName,
 	ValidationError,
 } from "@/lib/validation";
+
+function validAccessCode(provided: unknown) {
+	const expected = process.env.REGISTRATION_ACCESS_CODE;
+	if (typeof expected !== "string" || expected.trim().length === 0) {
+		// No code configured → deny registration to avoid an open signup.
+		return false;
+	}
+	if (typeof provided !== "string" || provided.length === 0) return false;
+	const a = createHash("sha256").update(provided).digest();
+	const b = createHash("sha256").update(expected).digest();
+	return timingSafeEqual(a, b);
+}
 
 export async function POST(req: Request) {
 	try {
@@ -53,6 +66,13 @@ export async function POST(req: Request) {
 				return badRequest(error.message);
 			}
 			return badRequest("Invalid input");
+		}
+
+		// Verify registration access code before creating any account
+		if (!validAccessCode(body.accessCode)) {
+			return badRequest(
+				"Invalid or missing registration access code. Ask your administrator for a valid code.",
+			);
 		}
 
 		// Check if user already exists

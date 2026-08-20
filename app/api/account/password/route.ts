@@ -93,6 +93,7 @@ export async function POST(req: Request) {
 			title: "Password updated",
 			message: "Your account password was changed successfully.",
 			type: "SUCCESS",
+			actionUrl: "/pharmacist",
 		});
 
 		return NextResponse.json({

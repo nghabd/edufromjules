@@ -85,7 +85,7 @@ export function CourseBuilderModal({ isOpen, onClose, editingCourse }: Props) {
 			onClose();
 		},
 		onError: (err: unknown) => {
-			toast.error(getApiErrorMessage(err, "Failed to save course"));
+			toast.error(formatCourseSaveError(err, "Failed to save course"));
 		},
 	});
 
@@ -280,6 +280,43 @@ function getApiErrorMessage(error: unknown, fallback: string) {
 	if (axios.isAxiosError(error)) {
 		const message = error.response?.data?.message;
 		return typeof message === "string" ? message : fallback;
+	}
+	return fallback;
+}
+
+type ZodFlatten = {
+	formErrors?: string[];
+	fieldErrors?: Record<string, string[] | Record<string, unknown>>;
+};
+
+function flattenZodDetails(details: unknown): string {
+	const source = (details ?? {}) as ZodFlatten;
+	const parts: string[] = [];
+	if (Array.isArray(source.formErrors)) {
+		parts.push(...source.formErrors);
+	}
+	if (source.fieldErrors && typeof source.fieldErrors === "object") {
+		for (const [path, errors] of Object.entries(source.fieldErrors)) {
+			if (Array.isArray(errors)) {
+				for (const message of errors) {
+					parts.push(`${path}: ${message}`);
+				}
+			}
+		}
+	}
+	return parts.join(" • ");
+}
+
+function formatCourseSaveError(error: unknown, fallback: string) {
+	if (axios.isAxiosError(error)) {
+		const data = error.response?.data as
+			| { message?: string; details?: unknown }
+			| undefined;
+		const message = data?.message;
+		if (typeof message === "string") {
+			const details = flattenZodDetails(data?.details);
+			return details ? `${message} ${details}` : message;
+		}
 	}
 	return fallback;
 }

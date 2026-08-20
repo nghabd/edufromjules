@@ -37,6 +37,7 @@ export function AssignCourseModal({
 }) {
 	const queryClient = useQueryClient();
 	const [selectedTrainees, setSelectedTrainees] = useState<string[]>([]);
+	const [dueDate, setDueDate] = useState("");
 
 	const alreadyAssigned = useMemo(
 		() =>
@@ -56,12 +57,13 @@ export function AssignCourseModal({
 		mutationFn: async () =>
 			axios.post(`/api/supervisor/courses/${course.id}/assign`, {
 				userIds: selectedTrainees,
-				dueDate: null,
+				dueDate: new Date(dueDate).toISOString(),
 			}),
 		onSuccess: () => {
 			toast.success("Course assigned");
 			void queryClient.invalidateQueries({ queryKey: ["supervisor-overview"] });
 			setSelectedTrainees([]);
+			setDueDate("");
 			onClose();
 		},
 		onError: (err: unknown) => {
@@ -80,7 +82,23 @@ export function AssignCourseModal({
 				<DialogHeader>
 					<DialogTitle>Assign: {course.title}</DialogTitle>
 				</DialogHeader>
-				<div className="max-h-[360px] space-y-2 overflow-y-auto py-2">
+				<div className="space-y-4 py-2">
+					<div>
+						<label className="mb-1.5 block text-sm font-medium">
+							Deadline for completion <span className="text-destructive">*</span>
+						</label>
+						<input
+							type="datetime-local"
+							value={dueDate}
+							min={new Date().toISOString().slice(0, 16)}
+							onChange={(event) => setDueDate(event.target.value)}
+							className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+						/>
+						<p className="mt-1 text-xs text-muted-foreground">
+							The course must be finished by this date and time.
+						</p>
+					</div>
+					<div className="max-h-[300px] space-y-2 overflow-y-auto">
 					{trainees.length === 0 && (
 						<p className="text-sm text-muted-foreground">
 							No pharmacists available.
@@ -117,6 +135,7 @@ export function AssignCourseModal({
 							</label>
 						);
 					})}
+					</div>
 				</div>
 				<DialogFooter>
 					<Button type="button" variant="outline" onClick={onClose}>
@@ -124,7 +143,11 @@ export function AssignCourseModal({
 					</Button>
 					<Button
 						type="button"
-						disabled={selectedTrainees.length === 0 || assignCourse.isPending}
+						disabled={
+							selectedTrainees.length === 0 ||
+							!dueDate ||
+							assignCourse.isPending
+						}
 						onClick={() => assignCourse.mutate()}
 					>
 						<UserCheck className="mr-1 h-4 w-4" />

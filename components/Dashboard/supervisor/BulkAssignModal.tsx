@@ -87,7 +87,7 @@ export function BulkAssignModal({ isOpen, onClose, pharmacists, courses }: Props
 					<div className="flex items-center gap-2">
 						<Users className="h-5 w-5 text-blue-600" />
 						<h2 className="font-semibold text-slate-900 dark:text-white">
-							Bulk Assign Course
+							Assign All
 						</h2>
 					</div>
 					<button

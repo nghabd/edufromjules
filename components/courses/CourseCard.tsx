@@ -40,10 +40,10 @@ export function CourseCard({
 	const hasBody = Boolean(children);
 
 	return (
-		<div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
+		<div className="group rounded-2xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
 			<div
 				className={cn(
-					"grid gap-3 p-4 lg:grid-cols-[1fr_auto] lg:items-center",
+					"overflow-hidden grid gap-3 p-4 lg:grid-cols-[1fr_auto] lg:items-center",
 					hasBody && "border-b border-border",
 					hasBody && "cursor-pointer",
 				)}
@@ -120,7 +120,9 @@ export function CourseCard({
 					)}
 				</div>
 			</div>
-			{hasBody && expanded && <div className="animate-in px-4 py-3">{children}</div>}
+			{hasBody && expanded && (
+			<div className="animate-in px-4 py-3 relative z-10">{children}</div>
+		)}
 		</div>
 	);
 }

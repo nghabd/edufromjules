@@ -1,6 +1,8 @@
 "use client";
 
 import type { ChangeEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import { FileText, GripVertical, MapPinCheck, Paperclip, Plus, Trash2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +16,12 @@ import {
 	type TopicDraft,
 	materialTypeLabels,
 } from "./types";
+
+type Trainer = {
+	id: string;
+	name?: string | null;
+	email: string;
+};
 
 type LessonEditorProps = {
 	topic: TopicDraft;
@@ -59,6 +67,13 @@ export function LessonEditor({
 	onRemove,
 	onUpload,
 }: LessonEditorProps) {
+	// Fetch trainers (pharmacists with canApproveOnsiteTraining = true)
+	const { data: trainers = [] } = useQuery<Trainer[]>({
+		queryKey: ["trainers"],
+		queryFn: async () =>
+			(await axios.get("/api/supervisor/trainers")).data,
+	});
+
 	const updateMaterial = (materialIndex: number, patch: Partial<MaterialDraft>) => {
 		onChange({
 			...topic,
@@ -268,6 +283,30 @@ export function LessonEditor({
 											})
 										}
 									/>
+								</div>
+								<div>
+									<label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+										Assigned Trainer (Optional)
+									</label>
+									<select
+										value={material.trainerId || ""}
+										onChange={(event) =>
+											updateMaterial(materialIndex, {
+												trainerId: event.target.value || undefined,
+											})
+										}
+										className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+									>
+										<option value="">No trainer assigned</option>
+										{trainers.map((trainer) => (
+											<option key={trainer.id} value={trainer.id}>
+												{trainer.name || trainer.email}
+											</option>
+										))}
+									</select>
+									<p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+										Pharmacist who can approve this onsite task. Optional.
+									</p>
 								</div>
 							</div>
 						)}

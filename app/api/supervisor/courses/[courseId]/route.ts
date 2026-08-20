@@ -249,6 +249,10 @@ export async function PATCH(
 		const body = await req.json().catch(() => null);
 		const parsed = courseBuilderSchema.safeParse(body);
 		if (!parsed.success) {
+			console.error("[COURSE_UPDATE_PAYLOAD_ERROR]", {
+				body,
+				issues: parsed.error.flatten(),
+			});
 			return badRequest("Invalid course payload.", parsed.error.flatten());
 		}
 

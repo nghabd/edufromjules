@@ -44,6 +44,13 @@ export async function POST(req: Request, context: RouteContext) {
 			? new Date(parsed.data.dueDate)
 			: null;
 
+		if (dueDate && Number.isNaN(dueDate.getTime())) {
+			return badRequest("Invalid deadline date.");
+		}
+		if (dueDate && dueDate.getTime() <= Date.now()) {
+			return badRequest("Deadline must be in the future.");
+		}
+
 		const result = await assignCourseToPharmacists({
 			courseId,
 			pharmacistIds: userIds,

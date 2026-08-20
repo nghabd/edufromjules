@@ -123,6 +123,7 @@ export async function issueCourseCertificateIfComplete(
 		message: `Your certificate for ${assignment.course.title} is ready.`,
 		type: "SUCCESS",
 		email: true,
+		actionUrl: `/certificates/${certificate.id}`,
 	});
 
 	return certificate;

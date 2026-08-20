@@ -17,6 +17,8 @@ import {
 import { DefaultAccountAvatar } from "@/components/layout/DefaultAccountAvatar";
 import { useRealtimeQueryInvalidation } from "@/components/realtime/useRealtimeQueryInvalidation";
 import { REALTIME_EVENTS } from "@/lib/realtime-events";
+import { SkeletonList } from "@/components/ui/Skeleton";
+import { playMessageSentSound, playMessageReceivedSound, playErrorSound, resumeAudioContext } from "@/components/ui/sounds";
 
 type Contact = {
 	id: string;
@@ -32,6 +34,7 @@ type Message = {
 	senderId: string;
 	recipientId: string;
 	createdAt: string;
+	courseId?: string | null;
 	sender: Contact;
 };
 
@@ -98,6 +101,7 @@ export function MessagingDialog({ currentUserId }: MessagingDialogProps) {
 				body: messageBody,
 			}),
 		onSuccess: () => {
+			playMessageSentSound();
 			setMessageBody("");
 			void queryClient.invalidateQueries({
 				queryKey: ["messages", selectedContactId],
@@ -109,14 +113,25 @@ export function MessagingDialog({ currentUserId }: MessagingDialogProps) {
 				? error.response?.data?.message
 				: null;
 			toast.error(typeof message === "string" ? message : "Message failed");
+			playErrorSound();
 		},
 	});
 
 	const submitMessage = (event: FormEvent) => {
 		event.preventDefault();
 		if (!selectedContactId || !messageBody.trim()) return;
+		resumeAudioContext();
 		sendMessage.mutate();
 	};
+
+	// Play sound when new message arrives via realtime
+	useEffect(() => {
+		if (!isOpen || !selectedContactId || !messagesData) return;
+		const latestMessage = messagesData.messages[messagesData.messages.length - 1];
+		if (latestMessage && latestMessage.senderId !== currentUserId) {
+			playMessageReceivedSound();
+		}
+	}, [messagesData, isOpen, selectedContactId, currentUserId]);
 
 	const unreadCount = unreadData?.unreadCount ?? 0;
 
@@ -194,30 +209,58 @@ export function MessagingDialog({ currentUserId }: MessagingDialogProps) {
 								)}
 							</div>
 							<div className="space-y-3 overflow-y-auto p-4">
-								{(messagesData?.messages ?? []).map((message) => {
-									const mine = message.senderId === currentUserId;
-									return (
-										<div
-											key={message.id}
-											className={`flex ${mine ? "justify-end" : "justify-start"}`}
-										>
-											<div
-												className={`max-w-[72%] rounded-md px-3 py-2 text-sm ${
-													mine
-														? "bg-primary text-primary-foreground"
-														: "bg-muted"
-												}`}
-											>
-												<p className="whitespace-pre-wrap break-words">
-													{message.body}
-												</p>
-												<p className="mt-1 text-[10px] opacity-70">
-													{new Date(message.createdAt).toLocaleString()}
-												</p>
-											</div>
-										</div>
+								{(() => {
+									if (!selectedContact) return null;
+									if (messagesData === undefined) return <SkeletonList items={5} />;
+									if (messagesData.messages.length === 0) return (
+										<p className="text-center text-slate-500 py-8">No messages yet.</p>
 									);
-								})}
+									return messagesData.messages.map((message) => {
+										const mine = message.senderId === currentUserId;
+										const hasCourseLink = Boolean(message.courseId);
+										return (
+											<button
+												key={message.id}
+												className={`flex w-full ${
+													mine ? "justify-end" : "justify-start"
+												} ${
+													hasCourseLink
+														? "cursor-pointer hover:opacity-90"
+														: ""
+												}`}
+												onClick={hasCourseLink
+													? () =>
+															window.location.assign(
+																`/pharmacist?courseId=${message.courseId}`,
+															)
+													: undefined}
+											>
+												<div
+													className={`max-w-[72%] rounded-md px-3 py-2 text-sm ${
+														mine
+															? "bg-primary text-primary-foreground"
+															: "bg-muted"
+													}`}
+												>
+													<p className="whitespace-pre-wrap break-words">
+														{message.body}
+													</p>
+													<p className="mt-1 text-[10px] opacity-70">
+														{new Date(message.createdAt).toLocaleString()}
+														{hasCourseLink && (
+															<span className="ml-2 inline-flex items-center gap-1 text-xs opacity-80">
+																<svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																	<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+																</svg>
+																Course
+															</span>
+														)}
+													</p>
+												</div>
+											</button>
+										);
+									});
+								})()}
 							</div>
 							<form
 								onSubmit={submitMessage}

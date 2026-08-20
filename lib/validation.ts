@@ -192,7 +192,15 @@ const MIME_TYPE_EXTENSIONS: Record<string, string[]> = {
 
 const TYPE_TO_MIME_TYPES: Record<string, string[]> = {
 	PDF: ["application/pdf"],
-	VIDEO: ["video/mp4", "video/quicktime", "video/x-msvideo"],
+	VIDEO: [
+		"video/mp4",
+		"video/quicktime",
+		"video/x-msvideo",
+		"video/webm",
+		"video/x-matroska",
+		"video/3gpp",
+		"video/3gpp2",
+	],
 	IMAGE: ["image/jpeg", "image/png", "image/webp", "image/gif"],
 	DOCUMENT: [
 		"application/msword",

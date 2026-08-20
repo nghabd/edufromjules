@@ -29,6 +29,7 @@ import { QuizHistoryPanel } from "@/components/quiz/QuizHistoryPanel";
 import { ProfilePanel } from "@/components/profile/ProfilePanel";
 import { useRealtimeQueryInvalidation } from "@/components/realtime/useRealtimeQueryInvalidation";
 import { REALTIME_EVENTS } from "@/lib/realtime-events";
+import { SkeletonCourseCard, SkeletonCard, Skeleton } from "@/components/ui/Skeleton";
 
 const pharmacistRealtimeEvents = [
 	REALTIME_EVENTS.pharmacistChanged,
@@ -166,23 +167,7 @@ export const PharmacistDashboard: React.FC = () => {
 		refetchInterval: authenticated ? 120_000 : false,
 	});
 
-	if (isLoading) return <DashboardSkeleton />;
-
-	if (error) {
-		return (
-			<div className="mx-auto max-w-7xl px-4 py-8">
-				<div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex gap-3">
-					<AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-					<div>
-						<p className="text-sm font-medium text-red-900 dark:text-red-200">
-							Failed to load your dashboard. Please refresh the page.
-						</p>
-					</div>
-				</div>
-			</div>
-		);
-	}
-
+	// Derive data before early returns to satisfy hooks rules
 	const assignedCourses = data?.assignedCourses ?? [];
 	const isCourseCompleted = (course: AssignedCourse) =>
 		course.completed ?? course.progress >= 100;
@@ -204,6 +189,30 @@ export const PharmacistDashboard: React.FC = () => {
 		overdueCourses.map((course) => course.assignmentId),
 	);
 
+	const filterCounts = {
+		all: assignedCourses.length,
+		"in-progress": unfinishedCourses.length,
+		completed: completedCourses.length,
+		overdue: overdueCourses.length,
+	};
+
+	if (isLoading) return <DashboardSkeleton />;
+
+	if (error) {
+		return (
+			<div className="mx-auto max-w-7xl px-4 py-8">
+				<div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex gap-3">
+					<AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+					<div>
+						<p className="text-sm font-medium text-red-900 dark:text-red-200">
+							Failed to load your dashboard. Please refresh the page.
+						</p>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
 	const selectCourseFilter = (status: CourseFilter) => {
 		setActiveTab("courses");
 		setFilterStatus(status);
@@ -212,6 +221,7 @@ export const PharmacistDashboard: React.FC = () => {
 				behavior: "smooth",
 				block: "start",
 			});
+
 		});
 	};
 
@@ -327,22 +337,34 @@ export const PharmacistDashboard: React.FC = () => {
 
 					<TabsContent value="courses" className="space-y-4">
 						<div className="flex gap-2 overflow-x-auto pb-1">
-							{(["all", "in-progress", "completed", "overdue"] as const).map((status) => (
-								<button
-									key={status}
-									onClick={() => selectCourseFilter(status)}
-									className={`shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-all ${
-										filterStatus === status
-											? "bg-blue-600 text-white shadow-md"
-											: "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-									}`}
-								>
-									{status === "all" && "All Courses"}
-									{status === "in-progress" && "In Progress"}
-									{status === "completed" && "Completed"}
-									{status === "overdue" && "Overdue"}
-								</button>
-							))}
+							{(["all", "in-progress", "completed", "overdue"] as const).map((status) => {
+								const count = filterCounts[status];
+								const isDisabled = count === 0;
+								return (
+									<button
+										key={status}
+										onClick={() => !isDisabled && selectCourseFilter(status)}
+										disabled={isDisabled}
+										className={`shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-all ${
+											isDisabled
+												? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+												: filterStatus === status
+												? "bg-blue-600 text-white shadow-md"
+												: "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+										}`}
+									>
+										{status === "all" && "All Courses"}
+										{status === "in-progress" && "In Progress"}
+										{status === "completed" && "Completed"}
+										{status === "overdue" && "Overdue"}
+										{count > 0 && (
+											<span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-300 px-1.5">
+												{count}
+											</span>
+										)}
+									</button>
+								);
+							})}
 						</div>
 
 						<div ref={coursesSectionRef} className="scroll-mt-24 grid gap-3">
@@ -599,17 +621,21 @@ const MetricCard = ({
 const DashboardSkeleton = () => (
 	<div className="mx-auto max-w-7xl px-4 py-8">
 		<div className="space-y-6">
-			<div className="h-8 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+			<div className="space-y-2">
+				<Skeleton className="h-8 w-48 rounded" />
+				<Skeleton className="h-6 w-64 rounded" />
+				<Skeleton className="h-4 w-80 rounded" />
+			</div>
 			<div className="grid gap-4 md:grid-cols-4">
 				{Array.from({ length: 4 }).map((_, i) => (
-					<Card key={i} className="p-6">
-						<div className="h-20 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-					</Card>
+					<SkeletonCard key={i} />
 				))}
 			</div>
-			<Card className="p-8">
-				<div className="h-32 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-			</Card>
+			<div className="grid gap-3">
+				{Array.from({ length: 3 }).map((_, i) => (
+					<SkeletonCourseCard key={i} />
+				))}
+			</div>
 		</div>
 	</div>
 );

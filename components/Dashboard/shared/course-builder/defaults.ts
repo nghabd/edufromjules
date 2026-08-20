@@ -64,6 +64,7 @@ export function createAttachmentMaterial(): MaterialDraft {
 		type: "PDF",
 		url: "",
 		content: "",
+		trainerId: "",
 	};
 }
 
@@ -187,6 +188,7 @@ export function normalizeCourseForEditor(course: unknown): CourseFormDraft {
 											: undefined,
 										gateQuestion: String(material.gateQuestion || ""),
 										gateAnswer: String(material.gateAnswer || ""),
+										trainerId: String(material.trainerId || ""),
 									};
 								})
 							: [createArticleMaterial()],

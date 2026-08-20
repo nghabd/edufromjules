@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { sendAssignmentEmail } from "@/lib/mail";
 import { publishDashboardRefresh } from "@/lib/realtime-server";
 import { REALTIME_EVENTS } from "@/lib/realtime-events";
+import { createNotification } from "@/lib/notifications";
 
 export class AssignCourseError extends Error {
 	status: number;
@@ -104,14 +105,16 @@ export async function assignCourseToPharmacists(
 				});
 			}
 
-			await tx.notification.create({
-				data: {
+			await createNotification(
+				{
 					userId: pharmacist.id,
 					title: "New course assigned",
 					message: `"${course.title}" has been assigned to you.`,
 					type: "INFO",
+					actionUrl: `/pharmacist?courseId=${course.id}`,
 				},
-			});
+				tx,
+			);
 
 			assigned++;
 		}

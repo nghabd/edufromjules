@@ -18,6 +18,7 @@ type Notification = {
 	type: string;
 	read: boolean;
 	createdAt: string;
+	actionUrl?: string | null;
 };
 
 type NotificationsData = {
@@ -162,6 +163,9 @@ export function NotificationBell() {
 									}`}
 									onClick={() => {
 										if (!n.read) markRead.mutate(n.id);
+										if (n.actionUrl) {
+											window.location.href = n.actionUrl;
+										}
 									}}
 								>
 									<span
@@ -188,6 +192,11 @@ export function NotificationBell() {
 									</div>
 									{!n.read && (
 										<span className="flex-shrink-0 mt-2 h-2 w-2 rounded-full bg-blue-500" />
+									)}
+									{n.actionUrl && (
+										<svg className="flex-shrink-0 mt-2 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+										</svg>
 									)}
 								</button>
 							))

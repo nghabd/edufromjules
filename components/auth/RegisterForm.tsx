@@ -10,6 +10,7 @@ import {
 	User,
 	Mail,
 	Lock,
+	KeyRound,
 	CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ export const RegisterForm = () => {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [name, setName] = useState("");
+	const [accessCode, setAccessCode] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
 	const [passwordStrength, setPasswordStrength] = useState(0);
@@ -47,8 +49,13 @@ export const RegisterForm = () => {
 	const isNameValid = name.trim().length >= 2;
 	const isEmailValid = email.includes("@") && email.includes(".");
 	const isPasswordValid = password.length >= 8;
+	const isAccessCodeValid = accessCode.trim().length > 0;
 	const isFormValid =
-		isNameValid && isEmailValid && isPasswordValid && !loading;
+		isNameValid &&
+		isEmailValid &&
+		isPasswordValid &&
+		isAccessCodeValid &&
+		!loading;
 
 	const getPasswordStrengthLabel = () => {
 		const labels = [
@@ -83,7 +90,12 @@ export const RegisterForm = () => {
 			const response = await fetch("/api/register", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ email, password, name: name.trim() }),
+				body: JSON.stringify({
+					email,
+					password,
+					name: name.trim(),
+					accessCode: accessCode.trim(),
+				}),
 			});
 
 			const payload = await response.json().catch(() => ({}));
@@ -261,6 +273,31 @@ export const RegisterForm = () => {
 							)}
 						</div>
 
+						{/* Access Code Input */}
+						<div>
+							<label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+								Registration Access Code
+							</label>
+							<div className="relative">
+								<KeyRound className="absolute left-3 top-3.5 w-5 h-5 text-slate-400 dark:text-slate-600" />
+								<Input
+									required
+									type="text"
+									autoComplete="off"
+									placeholder="Enter your registration code"
+									value={accessCode}
+									onChange={(e) => setAccessCode(e.target.value)}
+									className="pl-10 h-11 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+									disabled={loading}
+								/>
+							</div>
+							{accessCode && !isAccessCodeValid && (
+								<p className="mt-1 text-xs text-red-600 dark:text-red-400">
+									Please enter the access code provided by your administrator
+								</p>
+							)}
+						</div>
+
 						{/* Sign Up Button */}
 						<Button
 							type="submit"
@@ -291,7 +328,8 @@ export const RegisterForm = () => {
 						{/* Info Note */}
 						<div className="mt-6 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
 							<p className="text-xs text-blue-900 dark:text-blue-200">
-								<span className="font-semibold">ℹ️ Note:</span> New accounts
+								<span className="font-semibold">ℹ️ Note:</span> You need a
+								registration access code to create an account. New accounts
 								start as pharmacists and can receive course assignments.
 							</p>
 						</div>

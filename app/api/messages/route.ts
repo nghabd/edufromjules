@@ -92,6 +92,7 @@ export async function POST(req: Request) {
 		const body = await req.json().catch(() => null);
 		const recipientId = String(body?.recipientId ?? "");
 		const text = String(body?.body ?? "").trim();
+		const courseId = body?.courseId ? String(body.courseId) : null;
 
 		if (!recipientId) return badRequest("Recipient is required.");
 		if (!text || text.length > 2000) {
@@ -113,6 +114,7 @@ export async function POST(req: Request) {
 				senderId: currentUser.id,
 				recipientId: recipient.id,
 				body: text,
+				courseId,
 			},
 			include: {
 				sender: { select: { id: true, name: true, email: true, role: true } },

@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import {
 	ArrowRight,
 	BookOpen,
+	CalendarClock,
 	CheckCircle2,
 	ChevronDown,
 	ChevronUp,
@@ -29,6 +30,7 @@ import { BulkAssignModal } from "@/components/Dashboard/supervisor/BulkAssignMod
 import { CourseBuilderModal } from "@/components/Dashboard/shared/CourseBuilderModal";
 import { CourseCard } from "@/components/courses/CourseCard";
 import { CourseTopicList } from "@/components/courses/CourseTopicList";
+import { SkeletonCard, SkeletonCourseCard, Skeleton } from "@/components/ui/Skeleton";
 import {
 	CourseDetailDialog,
 	type CourseDetailData,
@@ -142,11 +144,26 @@ export function SupervisorDashboard() {
 		enabled: authenticated,
 	});
 
-	const { data, isLoading } = useQuery<SupervisorOverview>({
+const { data, isLoading } = useQuery<SupervisorOverview>({
 		queryKey: ["supervisor-overview"],
 		queryFn: async () => (await axios.get("/api/supervisor/overview")).data,
 		enabled: authenticated,
-		refetchInterval: authenticated ? 120_000 : false,
+		refetchInterval: 30_000,
+	});
+
+	// Count unread "New Pharmacist Assigned" notifications for badge
+	const { data: pendingPharmacistsCount = 0 } = useQuery<number>({
+		queryKey: ["pending-pharmacists-count"],
+		queryFn: async () => {
+			const res = await axios.get("/api/notifications");
+			const notifications = res.data.notifications ?? [];
+			return notifications.filter(
+				(n: { title: string; read: boolean }) =>
+					!n.read && n.title === "New Pharmacist Assigned",
+			).length;
+		},
+		enabled: authenticated,
+		refetchInterval: 30_000,
 	});
 
 	const {
@@ -196,6 +213,7 @@ export function SupervisorDashboard() {
 		},
 	});
 
+	// Derive data before early return to satisfy hooks rules
 	const trainees = useMemo(() => data?.groupTrainees ?? [], [data?.groupTrainees]);
 	const courses = useMemo(() => data?.courses ?? [], [data?.courses]);
 	const onsiteTraining = useMemo(
@@ -203,7 +221,6 @@ export function SupervisorDashboard() {
 		[onsiteData?.onsiteTraining],
 	);
 	const pendingOnsiteTraining = onsiteTraining.filter((item) => !item.completed);
-
 	const filteredCourses = useMemo(
 		() =>
 			courses.filter((course) =>
@@ -264,6 +281,29 @@ export function SupervisorDashboard() {
 		return trainees;
 	}, [traineeFilter, trainees]);
 
+	if (isLoading) {
+		return (
+			<div className="mx-auto max-w-7xl px-4 py-8">
+				<div className="space-y-6">
+					<div className="space-y-2">
+						<Skeleton className="h-8 w-64 rounded" />
+						<Skeleton className="h-4 w-80 rounded" />
+					</div>
+					<div className="grid gap-4 md:grid-cols-4">
+						{Array.from({ length: 4 }).map((_, i) => (
+							<SkeletonCard key={i} />
+						))}
+					</div>
+					<div className="grid gap-3">
+						{Array.from({ length: 3 }).map((_, i) => (
+							<SkeletonCourseCard key={i} />
+						))}
+					</div>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="min-h-screen bg-background p-4 md:p-8">
 			<div className="mx-auto max-w-7xl space-y-6">
@@ -280,10 +320,15 @@ export function SupervisorDashboard() {
 						<Button type="button" onClick={() => setIsAddTraineeOpen(true)}>
 							<Plus className="mr-1 h-4 w-4" />
 							Add Pharmacist
+							{pendingPharmacistsCount > 0 && (
+								<span className="ml-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1.5">
+									{pendingPharmacistsCount > 99 ? "99+" : pendingPharmacistsCount}
+								</span>
+							)}
 						</Button>
 						<Button type="button" variant="outline" onClick={() => setIsBulkAssignOpen(true)}>
 							<Users className="mr-1 h-4 w-4" />
-							Bulk Assign
+							Assign All
 						</Button>
 						<Button
 							type="button"
@@ -705,6 +750,16 @@ function PharmacistRow({
 									{assignment.status}
 								</Badge>
 							</div>
+							{assignment.dueDate && (
+								<p className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+									<CalendarClock className="h-3.5 w-3.5" />
+									Deadline:{" "}
+									{new Date(assignment.dueDate).toLocaleString(undefined, {
+										dateStyle: "medium",
+										timeStyle: "short",
+									})}
+								</p>
+							)}
 							<div className="h-2 overflow-hidden rounded-full bg-muted">
 								<div
 									className="h-full bg-primary transition-all"

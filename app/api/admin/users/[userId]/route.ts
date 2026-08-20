@@ -5,6 +5,7 @@ import { enforceTrustedOrigin } from "@/lib/request-security";
 import { adminUpdateUserSchema } from "@/lib/schemas";
 import { publishDashboardRefresh } from "@/lib/realtime-server";
 import { REALTIME_EVENTS } from "@/lib/realtime-events";
+import { createNotification } from "@/lib/notifications";
 
 type RouteContext = { params: Promise<{ userId: string }> };
 
@@ -66,30 +67,54 @@ export async function PATCH(req: Request, context: RouteContext) {
 			if (!supervisor) return badRequest("Selected supervisor was not found.");
 		}
 
-		const updatedUser = await prisma.user.update({
-			where: { id: userId },
-			data: {
-				name: parsed.data.name || null,
-				role: parsed.data.role,
-				canApproveOnsiteTraining:
-					parsed.data.role === "PHARMACIST"
-						? parsed.data.canApproveOnsiteTraining
-						: false,
-				// Apply supervisor ID, or clear it if it's empty
-				supervisorId:
-					parsed.data.role === "PHARMACIST"
-						? parsed.data.supervisorId || null
-						: null,
-			},
-			select: {
-				id: true,
-				name: true,
-				email: true,
-				role: true,
-				canApproveOnsiteTraining: true,
-				supervisorId: true,
-				updatedAt: true,
-			},
+		const oldSupervisorId = targetUser.supervisorId;
+		const newSupervisorId = parsed.data.supervisorId || null;
+
+		const updatedUser = await prisma.$transaction(async (tx) => {
+			const user = await tx.user.update({
+				where: { id: userId },
+				data: {
+					name: parsed.data.name || null,
+					role: parsed.data.role,
+					canApproveOnsiteTraining:
+						parsed.data.role === "PHARMACIST"
+							? parsed.data.canApproveOnsiteTraining
+							: false,
+					supervisorId:
+						parsed.data.role === "PHARMACIST"
+							? parsed.data.supervisorId || null
+							: null,
+				},
+				select: {
+					id: true,
+					name: true,
+					email: true,
+					role: true,
+					canApproveOnsiteTraining: true,
+					supervisorId: true,
+					updatedAt: true,
+				},
+			});
+
+			// Notify new supervisor when a pharmacist is assigned to them
+			if (
+				parsed.data.role === "PHARMACIST" &&
+				newSupervisorId &&
+				newSupervisorId !== oldSupervisorId
+			) {
+				await createNotification(
+					{
+						userId: newSupervisorId,
+						title: "New Pharmacist Assigned",
+						message: `${targetUser.name || targetUser.email} has been added to your team.`,
+						type: "INFO",
+						actionUrl: `/supervisor?tab=team&pharmacistId=${user.id}`,
+					},
+					tx,
+				);
+			}
+
+			return user;
 		});
 
 		await publishDashboardRefresh([
