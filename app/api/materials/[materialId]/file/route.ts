@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/api-auth";
 import { findAccessibleMaterial } from "@/lib/material-access";
 import { logger } from "@/lib/logger";
 import { getStorageService } from "@/lib/storage";
+import { getStorageConfig, getStorageConfigError } from "@/lib/storage/config";
 
 const mimeTypes: Record<string, string> = {
 	PDF: "application/pdf",
@@ -71,6 +72,20 @@ export async function GET(req: Request, context: RouteContext) {
 			return NextResponse.json(
 				{ message: "Invalid file path" },
 				{ status: 400 },
+			);
+		}
+
+		const storageConfigError = getStorageConfigError(getStorageConfig());
+		if (storageConfigError) {
+			logger.error("[FILE_STORAGE_CONFIG_ERROR]", {
+				error: storageConfigError,
+				provider: getStorageConfig().provider,
+			});
+			return NextResponse.json(
+				{
+					message: `Storage is not configured correctly on this server: ${storageConfigError}`,
+				},
+				{ status: 500 },
 			);
 		}
 
